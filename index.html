@@ -199,7 +199,7 @@ button { font: inherit; color: inherit; -webkit-tap-highlight-color: transparent
 }
 .stage { position: relative; overflow: hidden; touch-action: none; min-height: 0; }
 .stage:focus { outline: none; }
-.stage canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+.stage canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; image-rendering: pixelated; }
 
 .hud {
   position: absolute; left: 0; right: 0; top: 0;
@@ -413,6 +413,14 @@ body.touch .pad {
 
 .mi-tag { font-size: .74rem; color: var(--soft); margin-left: 6px; font-weight: 400; }
 
+/* 제작자의 세계: 메뉴 맨 위, 책 표지처럼 */
+.creator { margin: 0 0 10px; padding: 12px 14px 12px 16px; border-left: 4px solid var(--accent); background: var(--paper-2, rgba(0,0,0,.03)); }
+.creator-tag { margin: 0; font-size: .78rem; letter-spacing: .08em; color: var(--accent-ink, var(--accent)); font-weight: 700; }
+.creator-name { margin: 2px 0 6px; font-family: var(--f-story); font-weight: 700; font-size: 1.35rem; }
+.creator-desc { margin: 0; font-size: .9rem; line-height: 1.55; color: var(--soft); }
+.mi-main { font-weight: 700; }
+@media (orientation: landscape) and (max-height: 520px) { .creator-desc { display: none; } .creator { padding: 8px 12px; } }
+
 </style>
 
 <!-- 타이틀 화면: 실제 게임 장면 위에 로고와 메뉴 -->
@@ -426,9 +434,13 @@ body.touch .pad {
     </div>
     <div class="win title-win">
       <div id="menuMain" class="menu" role="menu" aria-label="메뉴">
-        <button id="btnPlay" class="mi" role="menuitem" type="button">새로 시작</button>
+        <div class="creator" id="creatorWorld">
+          <p class="creator-tag">제작자의 세계</p>
+          <p class="creator-name">여백의 서고</p>
+          <p class="creator-desc">“이 세계는 사이트 제작자의 생각과 감정, 기억을 바탕으로 만들어진 특별한 공간입니다. 이곳을 탐험하며 제작자의 내면에 담긴 이야기를 발견해 보세요.”</p>
+        </div>
+        <button id="btnPlay" class="mi mi-main" role="menuitem" type="button">여백의 서고 시작</button>
         <button id="btnRestart" class="mi" role="menuitem" type="button" hidden>처음부터</button>
-        <button id="btnTale" class="mi" role="menuitem" type="button">새 여백의 서고 <small class="mi-tag">새 판 · 처음부터 결말까지</small></button>
         <button id="btnQuiz" class="mi" role="menuitem" type="button">나의 세계 설계하기</button>
         <button id="btnMyBp" class="mi" role="menuitem" type="button" hidden>내 세계 설계도</button>
         <button id="btnOpenId" class="mi" role="menuitem" type="button">세계 ID로 열기</button>
@@ -480,7 +492,6 @@ body.touch .pad {
         <p class="fine">책갈피 색은 메뉴 표시와 주인공 목도리·책갈피 색이 됩니다. 설정과 진행은 이 브라우저에만 저장되고, 다른 기기와는 이어지지 않습니다.</p>
         <button id="btnBack" class="mi" type="button">돌아가기</button>
       </div>
-      <p class="win-foot"><b>여백의 서고</b> — 제작자의 내면을 담은 첫 번째 세계 (1장 체험판)</p>
     </div>
   </div>
   <!-- 질문 10개 -->
@@ -2103,6 +2114,8 @@ body.touch .pad {
     const { G, HT } = build();
     const solid = Array.from({ length: H }, (_, y) => Array.from({ length: W }, (_, x) => SOLID.has(G[y][x])));
     for (const o of OBJ) if (!o.twin) for (const [dx, dy] of footprint(o)) if (solid[o.y + dy]) solid[o.y + dy][o.x + dx] = true;
+    // 물 위 등불처럼 물에 서 있는 것은 칸이 이미 막혀 있다. 나머지 작은 물체는 픽셀 상자로
+    const BOXES = []; for (const o of OBJ) for (const b of boxes(o)) BOXES.push(b);
     // 물가 장식: 정해진 규칙으로만 — 잔잔한 남쪽 물가에 수련, 물가가 꺾이는 모서리에 바위 (판자 길 근처는 비움)
     const DECO = [];
     const isW = (x, y) => G[y] && G[y][x] === '~';
@@ -2122,13 +2135,25 @@ body.touch .pad {
       { id: 'summit', x: 31, y: 5, r: 7, tint: '#8890d4' },
     ];
     const GAP = [30, 35];
-    cache = { W, H, G, HT, OBJ, DECO, REGIONS, PTS, GAP, solid, hash, at: (x, y) => (x >= 0 && y >= 0 && x < W && y < H ? G[y][x] : 'F') };
+    cache = { W, H, G, HT, OBJ, DECO, REGIONS, PTS, GAP, BOXES, solid, hash, at: (x, y) => (x >= 0 && y >= 0 && x < W && y < H ? G[y][x] : 'F') };
     return cache;
   }
 
-  // 그림과 똑같은 충돌 칸
+  // 작은 물체는 칸 전체가 아니라 그림의 밑동(줄기·기둥·바닥)만 막는다 — [x, y, w, h] (물체 왼쪽 위 기준 px)
+  const BOX = {
+    tree: [[12, 24, 9, 7]], deadtree: [[12, 24, 8, 7]], lamp: [[5, 9, 7, 7]], sign: [[5, 9, 7, 7]], mailbox: [[5, 8, 7, 8]], hangsign: [[1, 9, 5, 7]],
+    stone: [[3, 8, 10, 8]], bush: [[2, 5, 12, 9]], rock: [[2, 6, 12, 9]], barrel: [[2, 4, 12, 12]], crate: [[1, 4, 14, 12]], log: [[1, 7, 14, 7]],
+    pot: [[3, 9, 10, 7]], woodpile: [[1, 6, 14, 10]], note: [[3, 5, 10, 9]], fire: [[2, 6, 12, 9]], tub: [[2, 3, 12, 12]], bench: [[0, 5, 16, 6]],
+  };
+  function boxes(o) {
+    if (o.twin || o.water) return [];
+    if (o.k === 'line') return [[o.x * 16 + 6, o.y * 16 + 8, 5, 8], [(o.x + o.w - 1) * 16 + 6, o.y * 16 + 8, 5, 8]];
+    return (BOX[o.k] || []).map(([x, y, w, h]) => [o.x * 16 + x, o.y * 16 + y, w, h]);
+  }
+  // 그림과 똑같은 충돌 칸 (칸 전체가 막히는 큰 물체만)
   function footprint(o) {
     const out = [];
+    if (BOX[o.k] || o.k === 'line') return out;
     switch (o.k) {
       case 'house': for (let y = 0; y < o.h; y++) for (let x = 0; x < o.w; x++) if (!(o.door && o.x + x === o.door[0] && o.y + y === o.door[1] && false)) out.push([x, y]); break;
       case 'tree': case 'deadtree': out.push([0, 1], [1, 1]); break;           // 줄기 칸만 막고 잎은 위로 겹친다
@@ -2145,7 +2170,7 @@ body.touch .pad {
     return out;
   }
 
-  IW.RepWorld = { get, footprint, W, H };
+  IW.RepWorld = { get, footprint, boxes, W, H };
 })(globalThis);
 
 // ---- src/data/tale-yeobaek.js ----
@@ -2401,7 +2426,7 @@ body.touch .pad {
     const map = IW.makeMap({
       id: 'yeobaek', rows, spots, npcs: NPCS.map((n) => ({ ...n })), enemies: [],
       start: { x: M.PTS.start[0] * T + 8, y: M.PTS.start[1] * T + 12, dir: 'right' },
-      baseFloor: (x, y) => { const c = M.at(x, y); return c === '=' ? 'dirt' : c === '#' || c === 'S' || c === 'o' || c === 'k' ? 'stone' : c === 'b' || c === 'B' ? 'boards' : c === '"' ? 'flower' : 'grass'; }, repWorld: M, tale: 'yeobaek',
+      baseFloor: (x, y) => { const c = M.at(x, y); return c === '=' ? 'dirt' : c === '#' || c === 'S' || c === 'o' || c === 'k' ? 'stone' : c === 'b' || c === 'B' ? 'boards' : c === '"' ? 'flower' : 'grass'; }, repWorld: M, tale: 'yeobaek', boxes: M.BOXES,
     });
     return map;
   }
@@ -3882,6 +3907,8 @@ body.touch .pad {
 
   // 사각형이 맵의 막힌 곳과 겹치는지
   function boxHitsMap(map, box) {
+    // 작은 물체의 픽셀 상자 (나무 밑동, 가로등 기둥 등)
+    if (map.boxes) for (const b of map.boxes) if (overlap(box, b)) return true;
     const x0 = Math.floor(box[0] / T), x1 = Math.floor((box[0] + box[2] - 0.001) / T);
     const y0 = Math.floor(box[1] / T), y1 = Math.floor((box[1] + box[3] - 0.001) / T);
     for (let ty = y0; ty <= y1; ty++) {
@@ -7363,6 +7390,31 @@ body.touch .pad {
     who.forEach((id, i) => { const n = npc(w, id), st = SEATS[i]; if (!n || !st) return; n.x = st[0] * T + 8; n.y = st[1] * T + 12; n.follow = false; n.soft = true; n.dir = st[0] < 31 ? 'right' : 'left'; });
   }
 
+  // 사람들의 하루: 각자 할 일이 있는 자리를 오간다. 가까이 가면 멈춰서 쳐다본다
+  const ROUTINE = {
+    sol: { pts: [[10, 16], [11, 15], [12, 17]], wait: [3.5, 2.5, 3], why: '빨래를 걷고 통에 넣고' },
+    mu: { pts: [[20, 25], [18, 20], [20, 25], [10, 21]], wait: [5, 3, 2, 3], why: '등불을 하나씩 살핀다', skip: (f) => f.muGone },
+    rio: { pts: [[21, 32], [19, 30], [22, 31]], wait: [4, 2, 3], why: '늪 앞을 서성인다', skip: (f) => f.bDone },
+    doyun: { pts: [[16, 22], [17, 20], [16, 22], [15, 21]], wait: [3, 1.5, 2, 1.5], why: '몸을 푼다', skip: (f) => f.raceState === 'run' },
+    yeon: { pts: [[52, 21], [54, 24], [51, 24]], wait: [4, 3, 2], why: '텐트 기둥을 다시 묶는다', skip: (f) => f.letterPick === 'read' || f.finished },
+  };
+  function routines(w, dt) {
+    const f = w.flags, p = w.player, rt = w.taleRT;
+    rt.rou = rt.rou || {};
+    for (const id in ROUTINE) {
+      const R = ROUTINE[id], n = npc(w, id); if (!n || n.hidden || (R.skip && R.skip(f))) continue;
+      const st = rt.rou[id] || (rt.rou[id] = { i: 0, wait: 1 + (id.length % 3), path: null });
+      const near = Math.hypot(p.x - n.x, p.y - n.y) < 44;
+      if (near || w.dialog || w.choice) { n.walking = false; if (near) { const dx = p.x - n.x, dy = p.y - n.y; n.dir = Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? 'right' : 'left') : (dy > 0 ? 'down' : 'up'); } continue; }
+      if (st.wait > 0) { st.wait -= dt; n.walking = false; continue; }
+      if (!st.path) { st.i = (st.i + 1) % R.pts.length; const [tx, ty] = R.pts[st.i]; st.path = path(w.map, tileOf(n), { x: tx, y: ty }) || []; }
+      let s = 24 * dt;
+      while (s > 0 && st.path.length) { const q = st.path[0], ex = q.x - n.x, ey = q.y - n.y, l = Math.hypot(ex, ey); if (l <= s) { n.x = q.x; n.y = q.y; st.path.shift(); s -= l; } else { n.x += ex / l * s; n.y += ey / l * s; s = 0; } if (l > 0.01) n.dir = Math.abs(ex) > Math.abs(ey) ? (ex > 0 ? 'right' : 'left') : (ey > 0 ? 'down' : 'up'); }
+      n.walking = st.path.length > 0; n.dist = (n.dist || 0) + 24 * dt;
+      if (!st.path.length) { st.path = null; st.wait = R.wait[st.i] || 3; n.dir = 'down'; }
+    }
+  }
+
   function begin(w) { IW.Game.say(w, D().INTRO, () => { w.flags.t_intro = true; ev(w, { type: 'objective', key: 'tale', first: true }); }); }
 
   // 목표 글: 지금 진행 중인 일 하나만, 짧게. 끝난 사건은 다음 갈 곳을 소문처럼.
@@ -7475,6 +7527,7 @@ body.touch .pad {
 
   function update(w, dt) {
     const f = w.flags, rt = w.taleRT || (w.taleRT = { cd: 0 }), p = w.player;
+    if (!f.finished || true) routines(w, dt);
     // 해미: 따라다닌다 (조금 떨어져서, 가끔 멈춰 두리번)
     const h = npc(w, 'hami');
     if (h && h.follow && !w.dialog && !w.choice) {
@@ -8931,14 +8984,16 @@ body.touch .pad {
       const kind = high && hh(i, j, 205) < 0.75 ? 'pine' : nearWater && hh(i, j, 206) < 0.35 ? 'birch' : 'broad';
       const family = vnoise(M, cx / 90, cy / 90, 12) > 0.62 ? 2 : vnoise(M, cx / 60, cy / 60, 13) > 0.5 ? 1 : 0;
       const r = 7 + ((hh(i, j, 202) * 5) | 0);
-      out.push({ y: cy + 6, draw: (c) => kind === 'pine' ? pine(c, cx, cy, r, south) : crown(c, M, cx, cy, r, kind === 'birch' ? CROWNS.birch : CROWNS.broad[family], south, i, j, kind === 'birch') });
+      // 숲 앞줄 나무는 줄기 밑동이 숲 칸 안에서 끝나게 (걸을 수 있는 칸에 줄기가 보이지 않게)
+      let cy2 = cy; while (M.at(Math.floor(cx / T), Math.floor((cy2 + r + 4) / T)) !== 'F' && cy2 > cy - 20) cy2--;
+      out.push({ crown: true, cx, cy: cy2, r, pine: kind === 'pine', base: cy2 + r + 5, x0: cx - r - 4, x1: cx + r + 4, top: cy2 - r - 6, bot: cy2 + r + 8, y: cy2 + 6, draw: (c) => kind === 'pine' ? pine(c, cx, cy2, r, south) : crown(c, M, cx, cy2, r, kind === 'birch' ? CROWNS.birch : CROWNS.broad[family], south, i, j, kind === 'birch') });
     }
     // 나무 머리가 하나도 안 닿은 숲 칸에는 한 그루 더 (네모난 빈 바닥이 보이지 않게)
     for (let ty = 0; ty < M.H; ty++) for (let tx = 0; tx < M.W; tx++) {
       if (M.at(tx, ty) !== 'F' || covered.has(tx + ',' + ty)) continue;
-      const cx = tx * T + 8, cy = ty * T + 7, south = M.at(tx, ty + 1) !== 'F', r = 8 + ((hh(tx, ty, 240) * 3) | 0);
+      const cx = tx * T + 8, south = M.at(tx, ty + 1) !== 'F', r = 8 + ((hh(tx, ty, 240) * 3) | 0); let cy = ty * T + 7; while (M.at(tx, Math.floor((cy + r + 4) / T)) !== 'F' && cy > ty * T - 12) cy--;
       const fam = vnoise(M, cx / 90, cy / 90, 12) > 0.62 ? 2 : vnoise(M, cx / 60, cy / 60, 13) > 0.5 ? 1 : 0;
-      out.push({ y: cy + 6, draw: (c) => crown(c, M, cx, cy, r, CROWNS.broad[fam], south, tx + 500, ty + 500, false) });
+      out.push({ crown: true, cx, cy, r, base: cy + r + 5, x0: cx - r - 4, x1: cx + r + 4, top: cy - r - 6, bot: cy + r + 8, y: cy + 6, draw: (c) => crown(c, M, cx, cy, r, CROWNS.broad[fam], south, tx + 500, ty + 500, false) });
     }
     // 숲 가장자리 덤불·고사리: 숲 바로 앞 풀밭 칸에만 (길·물·물체 자리는 비움)
     const occupied = new Set(); for (const o of M.OBJ) for (let y = o.y - 1; y <= o.y + o.h; y++) for (let x = o.x - 1; x <= o.x + o.w; x++) occupied.add(x + ',' + y);
@@ -9036,7 +9091,7 @@ body.touch .pad {
         px(c, 'rgba(0,0,0,0.3)', x - 1, roofBot - 2, w + 2, 2);
       }
       // 굴뚝·연기
-      if (o.chimney != null) { const cx = x + o.chimney * T + 2; px(c, INK, cx, roofTop - 5, 9, 10); px(c, '#7a6a60', cx + 1, roofTop - 4, 7, 9); px(c, '#9a8a80', cx + 1, roofTop - 4, 7, 2); if (o.lit) { px(c, 'rgba(200,200,215,0.35)', cx + 2, roofTop - 10, 4, 3); px(c, 'rgba(200,200,215,0.22)', cx + 4, roofTop - 15, 5, 3); px(c, 'rgba(200,200,215,0.12)', cx + 6, roofTop - 21, 6, 3); } }
+      if (o.chimney != null) { const cx = x + o.chimney * T + 2; px(c, INK, cx, roofTop - 5, 9, 10); px(c, '#7a6a60', cx + 1, roofTop - 4, 7, 9); px(c, '#9a8a80', cx + 1, roofTop - 4, 7, 2);  }
     },
     fence(c, o) {
       const x = o.x * T, y = o.y * T;
@@ -9184,8 +9239,9 @@ body.touch .pad {
   function reeds(c, M, tx, ty) {
     const ox = tx * T, oy = ty * T, hh = M.hash;
     px(c, 'rgba(159,192,214,0.35)', ox + 2, oy + 13, 12, 1);
-    for (let i = 0; i < 7; i++) { const x = 1 + (hh(tx, ty, 130 + i) * 13) | 0, h = 6 + (hh(tx, ty, 140 + i) * 7) | 0; px(c, INK, ox + x - 1, oy + T - 3 - h, 3, h + 1); px(c, i % 2 ? '#7d8a4a' : '#5f6d3c', ox + x, oy + T - 3 - h, 1, h); if (i % 3 === 0) px(c, '#8a6a48', ox + x, oy + T - 5 - h, 1, 3); }
+    for (let i = 0; i < 6; i++) { const x = 1 + (hh(tx, ty, 130 + i) * 13) | 0; px(c, INK, ox + x - 1, oy + T - 4, 3, 2); px(c, '#4a5a32', ox + x, oy + T - 4, 1, 2); }
   }
+
 
   function draw(c, M, opt = {}) {
     const { wf } = drawTerrain(c, M);
@@ -9208,8 +9264,20 @@ body.touch .pad {
     const flat = crowns(M);
     for (let ty = 0; ty < M.H; ty++) for (let tx = 0; tx < M.W; tx++) if (M.at(tx, ty) === 'r') flat.push({ y: ty * T + 14, draw: (cc) => reeds(cc, M, tx, ty) });
     for (const o of M.DECO || []) if (DRAW[o.k]) flat.push({ y: (o.y + o.h) * T - 16, draw: (cc) => DRAW[o.k](cc, o, M) });
-    flat.sort((a, b) => a.y - b.y); for (const d of flat) d.draw(g);
+    // 숲 나무 머리는 바닥에 굽지 않는다: 16px 띠로 묶어 캐릭터와 앞뒤를 가린다 (나무 북쪽에 서면 잎 뒤로 숨는다)
+    const crownsList = flat.filter((d) => d.crown), ground0 = flat.filter((d) => !d.crown);
+    ground0.sort((a, b) => a.y - b.y); for (const d of ground0) d.draw(g);
     const objs = [];
+    const bands = new Map();
+    for (const d of crownsList) { const k = Math.floor(d.base / T); if (!bands.has(k)) bands.set(k, []); bands.get(k).push(d); }
+    for (const [, list] of bands) {
+      list.sort((a, b) => a.y - b.y);
+      const x0 = Math.max(0, Math.min(...list.map((d) => d.x0))), x1 = Math.min(W, Math.max(...list.map((d) => d.x1)));
+      const y0 = Math.min(...list.map((d) => d.top)), y1 = Math.max(...list.map((d) => d.bot));
+      const cv = mk(Math.max(1, x1 - x0), Math.max(1, y1 - y0)), c2 = cv.getContext('2d'); c2.translate(-x0, -y0);
+      for (const d of list) d.draw(c2);
+      objs.push({ o: { k: 'band' }, cv, x0, y0, x1, y1, sortY: Math.min(...list.map((d) => d.base)) });
+    }
     for (const o of M.OBJ) {
       if (!DRAW[o.k]) continue;
       const x0 = o.x * T - 24, y0 = o.y * T - 44, cw = o.w * T + 48, ch = o.h * T + 52;
@@ -9270,7 +9338,298 @@ body.touch .pad {
     c.restore();
   }
 
-  IW.RepArt = { draw, T, layers, buildStatic, sortables, drawSortable, night };
+  IW.RepArt = { draw, T, layers, buildStatic, sortables, drawSortable, night, _crowns: crowns };
+})(globalThis);
+
+// ---- src/render/rep-life.js ----
+/* 살아 있는 세계 — 정적 배경(한 장)과 따로, 매 프레임 '움직이는 것'만 화면에 보이는 범위 안에서 그린다.
+   층: under(물결·물가 거품·갈대·폭포·작은 동물) → [인물·물체] → mid(굴뚝 연기·낙엽·불티) → [밤빛] → glow(반딧불·별 반짝임·불꽃 일렁임)
+   지역마다 다르게: 마을=연기·고양이·나방, 늪=개구리·반딧불·물안개, 풀밭=반딧불·흩날리는 꽃잎, 야영지=불티·연기, 별밭=별 반짝임·별똥별 */
+(function (g) {
+  const IW = (g.IW = g.IW || {});
+  const T = 16, INK = '#1d1822';
+  const px = (c, col, x, y, w = 1, h = 1) => { c.fillStyle = col; c.fillRect(Math.round(x), Math.round(y), w, h); };
+  const fr = (x) => x - Math.floor(x);
+
+  // 지도에서 한 번만 계산: 물 칸의 흐름, 물가, 갈대, 굴뚝, 동물 길
+  function prep(M) {
+    if (M._life) return M._life;
+    const water = [], reeds = [], falls = [], h = M.hash;
+    const isW = (x, y) => '~rbBk%'.includes(M.at(x, y));
+    for (let y = 0; y < M.H; y++) for (let x = 0; x < M.W; x++) {
+      const t = M.at(x, y);
+      if (t === '%') { falls.push([x, y]); continue; }
+      if (t === 'r') reeds.push([x, y]);
+      if (t !== '~' && t !== 'r') continue;
+      // 흐름: 손으로 정한 물길 — 큰 강은 아래로, 개울은 동쪽으로, 호수·웅덩이는 느리게 맴돈다
+      let kind = 'lake', vx = 0, vy = 0;
+      if (y >= 36 && x <= 22) { kind = 'creek'; vx = 9; vy = 0; }
+      else if (y >= 11 && y <= 29 && x >= 28 && x <= 35) { kind = 'river'; vx = 0; vy = 16; }
+      else if (y <= 10) { kind = 'river'; vx = 0; vy = 10; }
+      const shore = [[1, 0], [-1, 0], [0, 1], [0, -1]].filter(([dx, dy]) => !isW(x + dx, y + dy) && M.at(x + dx, y + dy) !== 'F' && M.at(x + dx, y + dy) !== 'C');
+      water.push({ x, y, kind, vx, vy, shore, p: h(x, y, 400), q: h(x, y, 401) });
+    }
+    const chim = M.OBJ.filter((o) => o.k === 'house' && o.lit && o.chimney != null).map((o) => ({ x: o.x * T + o.chimney * T + 6, y: o.y * T - 4, seed: o.x * 7 + o.y }));
+    const fire = M.OBJ.find((o) => o.k === 'fire');
+    const lamps = M.OBJ.filter((o) => o.k === 'lamp' && !o.dim && !o.showIf).map((o) => [o.x * T + 8, o.y * T - 10]);
+    // 반딧불 무리: 지역마다 수와 색이 다르다
+    const swarms = [
+      { x: 30, y: 36, r: 9, n: 22, col: [190, 240, 140] },   // 늪
+      { x: 51, y: 36, r: 8, n: 14, col: [220, 240, 160] },   // 선돌 풀밭
+      { x: 50, y: 19, r: 7, n: 8, col: [255, 210, 150] },    // 야영지 (불티 같은 색)
+      { x: 8, y: 37, r: 5, n: 6, col: [200, 240, 160] },     // 개울가
+    ];
+    const flies = []; swarms.forEach((s, si) => { for (let i = 0; i < s.n; i++) flies.push({ cx: s.x * T + (h(i, si, 410) - 0.5) * s.r * 2 * T, cy: s.y * T + (h(i, si, 411) - 0.5) * s.r * 1.4 * T, a: h(i, si, 412) * 6.28, sp: 0.25 + h(i, si, 413) * 0.4, rx: 10 + h(i, si, 414) * 26, ry: 6 + h(i, si, 415) * 14, col: s.col, ph: h(i, si, 416) * 9 }); });
+    // 낙엽·꽃잎: 마을 숲가와 풀밭
+    const drift = [];
+    for (let i = 0; i < 26; i++) { const z = i < 16 ? { x: 4, y: 11, w: 22, hgt: 18, col: ['#c9785b', '#b08a3c', '#8a5a3c'] } : { x: 42, y: 31, w: 18, hgt: 10, col: ['#e9a6b8', '#f1efe6', '#e8d98a'] }; drift.push({ x0: z.x * T + h(i, 1, 420) * z.w * T, y0: z.y * T + h(i, 2, 420) * z.hgt * T, sp: 6 + h(i, 3, 420) * 8, ph: h(i, 4, 420), col: z.col[i % 3], span: z.hgt * T }); }
+    // 작은 동물: 마을 고양이(우물↔빈집 마당), 늪 개구리(물가에서 폴짝), 별밭 별똥별
+    const frogs = water.filter((w) => w.kind === 'lake' && w.shore.length === 1 && w.p < 0.18).slice(0, 7).map((w) => ({ x: (w.x - w.shore[0][0] * 0.0) * T + 8 + w.shore[0][0] * 10, y: w.y * T + 10 + w.shore[0][1] * 10, ph: w.q * 10 }));
+    // 나무 머리: 바람이 지나갈 때 위쪽 잎이 살랑인다 (숲 안쪽은 안 보이니 앞줄·외딴 나무만)
+    const all = (IW.RepArt && IW.RepArt._crowns ? IW.RepArt._crowns(M) : []).filter((d) => d.crown && d.r), grid = new Map();
+    for (const d of all) { const key = (d.cx >> 5) + ',' + (d.cy >> 5); if (!grid.has(key)) grid.set(key, []); grid.get(key).push(d); }
+    // 위쪽 가장자리가 앞(남쪽) 나무에 가리지 않은 나무만 — 가려진 잎이 앞 나무 위에 그려지지 않게
+    const covered = (d) => { for (let gy = -1; gy <= 1; gy++) for (let gx = -1; gx <= 1; gx++) for (const o of grid.get(((d.cx >> 5) + gx) + ',' + ((d.cy >> 5) + gy)) || []) if (o !== d && o.base > d.base && Math.abs(o.cx - d.cx) < o.r + d.r * 0.6 && o.cy - o.r - 2 < d.cy - d.r + 5) return true; return false; };
+    const crowns = all.filter((d) => !d.pine && !covered(d)).map((d) => ({ x: d.cx, y: d.cy, r: d.r, p: h(d.cx, d.cy, 430) }));
+    // 풀포기: 풀밭·꽃밭 칸 다섯에 하나꼴 (물건 자리는 비움)
+    const busy = new Set(); for (const o of M.OBJ) for (let y = o.y; y < o.y + (o.h || 1); y++) for (let x = o.x; x < o.x + (o.w || 1); x++) busy.add(x + ',' + y);
+    const tufts = [];
+    for (let y = 0; y < M.H; y++) for (let x = 0; x < M.W; x++) {
+      const t = M.at(x, y); if ((t !== '.' && t !== '"') || busy.has(x + ',' + y) || h(x, y, 440) > 0.22) continue;
+      tufts.push({ x: x * T + 3 + ((h(x, y, 441) * 10) | 0), y: y * T + 6 + ((h(x, y, 442) * 9) | 0), n: 2 + ((h(x, y, 443) * 2) | 0), hgt: 3 + ((h(x, y, 444) * 3) | 0), flower: t === '"' });
+    }
+    M._life = { water, reeds, falls, chim, fire, lamps, flies, drift, frogs, crowns, tufts };
+    return M._life;
+  }
+  // 바람: 지도를 가로질러 천천히 지나가는 돌풍 (모든 풀과 잎이 같은 바람을 받는다)
+  const gust = (x, y, t) => { const s = Math.sin(t * 0.5 - x * 0.011 - y * 0.004); return s > 0 ? s * s * s : 0; };
+  const inView = (x, y, v, pad = 24) => x > v.x - pad && x < v.x + v.w + pad && y > v.y - pad && y < v.y + v.h + pad;
+
+  // ── 바닥 위: 물결·물가 거품·갈대·폭포·개구리·고양이 ──
+  function under(c, world, v, t) {
+    const M = world.map.repWorld, L = prep(M), W = ['#2b4b70', '#335a82', '#4f7ca4', '#9fc0d6'];
+    for (const w of L.water) {
+      const ox = w.x * T, oy = w.y * T;
+      if (!inView(ox, oy, v)) continue;
+      if (w.kind === 'river' || w.kind === 'creek') {
+        // 흐르는 물: 흐름 방향으로 미끄러지는 밝은 결 (칸마다 위상·길이가 달라 줄무늬로 안 보이게)
+        for (let k = 0; k < 2; k++) {
+          const ph = fr(w.p + k * 0.5 + t * (Math.abs(w.vx) + Math.abs(w.vy)) / 16 * (0.8 + w.q * 0.4));
+          if (w.vy) { const x = ox + 3 + ((w.q * 9 + k * 5) % 10), y = oy + ph * 16; px(c, k ? W[2] : W[3], x, y, 1, 2 + (k ? 1 : 0)); px(c, W[2], x + 1, y + 2, 1, 1); }
+          else { const x = ox + ph * 16, y = oy + 4 + ((w.q * 7 + k * 4) % 8); px(c, k ? W[2] : W[3], x, y, 3, 1); }
+        }
+      } else {
+        // 호수: 느리게 생겼다 사라지는 잔물결 (같은 자리에서 반복되지 않게 칸마다 다른 주기)
+        const life = fr(t * (0.12 + w.q * 0.1) + w.p);
+        if (life < 0.7) {
+          const a = Math.sin(life / 0.7 * Math.PI), x = ox + 2 + w.q * 9 + Math.sin(t * 0.3 + w.p * 6) * 2, y = oy + 3 + w.p * 9;
+          c.globalAlpha = a * 0.9; px(c, W[2], x, y, 4, 1); px(c, W[3], x + 1, y, 2, 1); c.globalAlpha = 1;
+        }
+      }
+      // 물가: 밀려왔다 빠지는 거품
+      for (const [dx, dy] of w.shore) {
+        const a = 0.35 + 0.35 * Math.sin(t * 1.3 + w.p * 9 + dx * 2 + dy);
+        c.globalAlpha = Math.max(0, a);
+        if (dy) for (let i = 0; i < 3; i++) px(c, '#d8ecf0', ox + 2 + ((w.q * 13 + i * 5) % 12), oy + (dy < 0 ? 4 : 11) + (i % 2), 2, 1);
+        else for (let i = 0; i < 3; i++) px(c, '#d8ecf0', ox + (dx < 0 ? 3 : 12), oy + 2 + ((w.q * 11 + i * 5) % 12), 1, 2);
+        c.globalAlpha = 1;
+      }
+    }
+    // 폭포: 떨어지는 물줄기와 아래 물보라
+    for (const [fx, fy] of L.falls) {
+      const ox = fx * T, oy = fy * T; if (!inView(ox, oy, v)) continue;
+      for (let i = 0; i < 7; i++) { const x = ox + 1 + i * 2, y = oy + fr(t * 1.8 + i * 0.37) * 16; px(c, i % 2 ? '#cfe3ee' : '#f1f8fb', x, y, 1, 4); }
+      if (M.at(fx, fy + 1) !== '%') for (let i = 0; i < 6; i++) { const ph = fr(t * 0.9 + i / 6), x = ox + 2 + ((i * 5) % 12) + Math.sin(i * 3 + t) * 2, y = oy + 16 - ph * 7; c.globalAlpha = 1 - ph; px(c, '#ffffff', x, y, 2, 2); c.globalAlpha = 1; }
+    }
+    // 갈대: 물결 따라 끝이 흔들린다 (바닥 그림에는 뿌리 쪽만, 줄기는 여기서)
+    for (const [rx, ry] of L.reeds) {
+      const ox = rx * T, oy = ry * T; if (!inView(ox, oy, v)) continue;
+      for (let i = 0; i < 6; i++) {
+        const x = ox + 1 + ((M.hash(rx, ry, 130 + i) * 13) | 0), hgt = 6 + ((M.hash(rx, ry, 140 + i) * 7) | 0), sway = Math.sin(t * 1.4 + rx * 0.9 + ry * 0.5 + i * 0.6) * 1.4;
+        for (let k = 0; k < hgt; k++) { const dx = Math.round(sway * (k / hgt) * (k / hgt)); px(c, i % 2 ? '#7d8a4a' : '#5f6d3c', x + dx, oy + T - 3 - k, 1, 1); }
+        if (i % 3 === 0) px(c, '#8a6a48', x + Math.round(sway), oy + T - 5 - hgt, 1, 3);
+      }
+    }
+    // 풀포기: 바람이 지나가면 끝이 눕는다
+    for (const u of L.tufts) {
+      if (!inView(u.x, u.y, v, 8)) continue;
+      const g = gust(u.x, u.y, t), lean = Math.round(g * 2 + Math.sin(t * 1.7 + u.x * 0.3) * 0.5);
+      for (let i = 0; i < u.n; i++) {
+        const bx = u.x + i * 2, hh = u.hgt - (i % 2);
+        px(c, '#41613c', bx, u.y - 2, 1, 2);
+        px(c, i % 2 ? '#5f8a4a' : '#6f9a52', bx + (lean > 0 ? Math.ceil(lean / 2) : 0), u.y - hh, 1, hh - 2);
+        if (lean > 1) px(c, '#86b061', bx + lean, u.y - hh, 1, 1);
+      }
+      if (u.flower) px(c, '#e9a6b8', u.x + 2 + lean, u.y - u.hgt - 1, 1, 1);
+    }
+    // 개구리: 가만히 있다가 가끔 폴짝
+    for (const f of L.frogs) {
+      if (!inView(f.x, f.y, v)) continue;
+      const cyc = fr(t / 6 + f.ph), hop = cyc > 0.9 ? Math.sin((cyc - 0.9) / 0.1 * Math.PI) * 5 : 0, x = f.x + (cyc > 0.9 ? (cyc - 0.9) * 30 : 0);
+      px(c, INK, x - 3, f.y - 3 - hop, 6, 4); px(c, '#5a8a4a', x - 2, f.y - 3 - hop, 4, 3); px(c, '#9ac27a', x - 2, f.y - 3 - hop, 1, 1); px(c, '#f1efe6', x + 1, f.y - 4 - hop, 1, 1);
+      if (cyc > 0.95) { c.globalAlpha = 0.6; px(c, '#d8ecf0', x - 4, f.y + 1, 8, 1); c.globalAlpha = 1; }
+    }
+    // 마을 고양이: 우물가 → 빈집 마당 → 등불 가게 앞을 천천히 돌다가 앉는다
+    const route = [[15, 23], [17, 16], [21, 16], [21, 26], [15, 23]], seg = route.length - 1, cycle = 48, u = fr(t / cycle) * seg, i0 = Math.floor(u), k = u - i0;
+    const walk = (k > 0.15 && k < 0.85), kk = Math.min(1, Math.max(0, (k - 0.15) / 0.7));
+    const a0 = route[i0], a1 = route[i0 + 1], cx = (a0[0] + (a1[0] - a0[0]) * kk) * T + 8, cy = (a0[1] + (a1[1] - a0[1]) * kk) * T + 12;
+    if (inView(cx, cy, v)) {
+      const right = a1[0] >= a0[0], step = walk ? Math.floor(t * 8) % 2 : 0, x = Math.round(cx), y = Math.round(cy);
+      px(c, 'rgba(8,10,20,0.3)', x - 5, y, 10, 2);
+      px(c, INK, x - 5, y - 6, 10, 6); px(c, '#3a3446', x - 4, y - 5, 8, 4);
+      const hx = right ? x + 3 : x - 6; px(c, INK, hx, y - 9, 5, 5); px(c, '#3a3446', hx + 1, y - 8, 3, 3); px(c, INK, hx, y - 10, 1, 1); px(c, INK, hx + 4, y - 10, 1, 1); px(c, '#e8d98a', hx + (right ? 3 : 1), y - 7, 1, 1);
+      const tx = right ? x - 6 : x + 5; px(c, '#3a3446', tx, y - 7 - (walk ? 0 : Math.round(Math.sin(t * 2) + 1)), 1, 4);
+      if (walk) { px(c, INK, x - 3 + step, y, 1, 1); px(c, INK, x + 2 - step, y, 1, 1); }
+    }
+  }
+
+  // ── 인물 위: 굴뚝 연기·낙엽·불티 (밤빛에 같이 물든다) ──
+  function mid(c, world, v, t) {
+    const M = world.map.repWorld, L = prep(M);
+    for (const ch of L.chim) {
+      if (!inView(ch.x, ch.y, v, 60)) continue;
+      for (let i = 0; i < 5; i++) {
+        const ph = fr(t * 0.18 + i / 5 + ch.seed * 0.13), x = ch.x + Math.sin(ph * 3 + ch.seed) * 3 + ph * 10, y = ch.y - ph * 34, r = 2 + ph * 4;
+        c.globalAlpha = (1 - ph) * 0.35; c.fillStyle = '#c8c8d6'; c.fillRect(Math.round(x - r / 2), Math.round(y - r / 2), Math.round(r), Math.round(r * 0.8)); c.globalAlpha = 1;
+      }
+    }
+    // 나무 머리 위쪽 가장자리: 돌풍이 닿으면 밝은 잎이 바람 쪽으로 쏠린다
+    for (const k of L.crowns) {
+      if (!inView(k.x, k.y, v, 20)) continue;
+      const g = gust(k.x, k.y, t); if (g < 0.15) continue;
+      const sh = Math.round(g * 2), top = k.y - k.r;
+      c.globalAlpha = Math.min(1, g * 1.2);
+      for (let i = 0; i < 4; i++) {
+        const ax = k.x - k.r + 2 + ((k.p * 7 + i * 4) % (k.r * 1.4)), ay = top + 1 + ((i * 3 + k.p * 5) % 4);
+        px(c, i % 2 ? '#7fa865' : '#9cc07a', ax + sh, ay, 2, 1);
+      }
+      c.globalAlpha = 1;
+    }
+    for (const d of L.drift) {
+      const y = d.y0 + fr(t * d.sp / d.span + d.ph) * d.span, x = d.x0 + Math.sin(t * 1.1 + d.ph * 20) * 6 + fr(t * d.sp / d.span + d.ph) * 20;
+      if (!inView(x, y, v)) continue;
+      const flip = Math.sin(t * 3 + d.ph * 30) > 0; px(c, d.col, x, y, flip ? 2 : 1, flip ? 1 : 2);
+    }
+    if (L.fire) {
+      const fx = L.fire.x * T + 8, fy = L.fire.y * T + 6;
+      if (inView(fx, fy, v, 60)) {
+        // 흔들리는 불꽃 + 올라가는 불티
+        const f1 = Math.sin(t * 9) > 0 ? 1 : 0; px(c, '#e88a3a', fx - 3, fy - 2 - f1, 6, 7); px(c, '#f3d27e', fx - 2, fy + f1, 4, 5); px(c, '#fff3c4', fx - 1, fy + 2, 2, 2);
+        for (let i = 0; i < 6; i++) { const ph = fr(t * 0.6 + i / 6), x = fx + Math.sin(i * 2.3 + t * 2) * 4 * ph, y = fy - 4 - ph * 30; c.globalAlpha = 1 - ph; px(c, ph < 0.5 ? '#f3d27e' : '#e88a3a', x, y, 1, 1); c.globalAlpha = 1; }
+      }
+    }
+  }
+
+  // ── 밤빛 위: 반딧불·나방·별 반짝임·별똥별 ──
+  function glow(c, world, v, t) {
+    const M = world.map.repWorld, L = prep(M);
+    c.save(); c.globalCompositeOperation = 'lighter';
+    for (const f of L.flies) {
+      const x = f.cx + Math.cos(t * f.sp + f.a) * f.rx + Math.sin(t * f.sp * 2.3 + f.ph) * 4, y = f.cy + Math.sin(t * f.sp * 1.3 + f.a) * f.ry;
+      if (!inView(x, y, v)) continue;
+      const b = Math.max(0, Math.sin(t * 1.7 + f.ph * 3)); if (b < 0.05) continue;
+      const [r, gg, bb] = f.col, gr = c.createRadialGradient(x, y, 0, x, y, 7);
+      gr.addColorStop(0, `rgba(${r},${gg},${bb},${(0.55 * b).toFixed(2)})`); gr.addColorStop(1, 'rgba(0,0,0,0)'); c.fillStyle = gr; c.fillRect(x - 7, y - 7, 14, 14);
+      c.fillStyle = `rgba(255,255,220,${b.toFixed(2)})`; c.fillRect(Math.round(x), Math.round(y), 1, 1);
+    }
+    // 가로등 둘레를 도는 나방
+    for (const [lx, ly] of L.lamps) {
+      if (!inView(lx, ly, v)) continue;
+      for (let i = 0; i < 2; i++) { const a = t * (2.2 + i * 0.7) + i * 3, x = lx + Math.cos(a) * (6 + i * 3), y = ly + Math.sin(a * 1.3) * 4 - 2; c.fillStyle = 'rgba(255,240,200,0.8)'; c.fillRect(Math.round(x), Math.round(y), 1, 1); }
+    }
+    // 별밭: 떨어진 별이 숨 쉬듯 밝아졌다 어두워진다, 가끔 별똥별
+    for (const o of M.OBJ) if (o.k === 'star') {
+      const x = o.x * T + 8, y = o.y * T + 9; if (!inView(x, y, v)) continue;
+      const b = 0.4 + 0.4 * Math.sin(t * 1.2 + o.x), gr = c.createRadialGradient(x, y, 0, x, y, 22);
+      gr.addColorStop(0, `rgba(170,210,255,${(0.35 * b).toFixed(2)})`); gr.addColorStop(1, 'rgba(0,0,0,0)'); c.fillStyle = gr; c.fillRect(x - 22, y - 22, 44, 44);
+    }
+    const sh = fr(t / 11);
+    if (sh < 0.08) { const k = sh / 0.08, x = (44 + k * 14) * T, y = (1 + k * 4) * T; if (inView(x, y, v, 80)) for (let i = 0; i < 10; i++) { c.fillStyle = `rgba(240,240,255,${(0.8 - i * 0.08).toFixed(2)})`; c.fillRect(Math.round(x - i * 3), Math.round(y - i * 1.4), 2, 1); } }
+    c.restore();
+  }
+
+  // ════ 생성된 세계: 같은 원리로, 풍경마다 다른 생기 ════
+  // 풍경별: 떠다니는 것(꽃잎·낙엽·모래 반짝임·먼지·별가루), 밤 반딧불 색과 수
+  const GEN_LIFE = {
+    garden: { drift: ['#e9a6b8', '#f1efe6', '#f3d36b'], n: 18, fly: [200, 240, 150], flies: 14 },
+    forest: { drift: ['#c9785b', '#b08a3c', '#8a5a3c'], n: 22, fly: [190, 240, 140], flies: 20 },
+    shore: { drift: ['#f1efe6', '#d8ecf0'], n: 10, fly: [210, 235, 255], flies: 6, sea: true },
+    alley: { drift: ['#e07a5f', '#f2cc8f'], n: 8, fly: [255, 215, 160], flies: 6 },
+    observatory: { drift: ['#d6c3f0', '#ffffff'], n: 12, fly: [200, 210, 255], flies: 12 },
+    station: { drift: ['#c8c4bc', '#a8a49c'], n: 10, fly: [255, 230, 170], flies: 4 },
+  };
+  function genPrep(map) {
+    if (map._life) return map._life;
+    const sd = map.sceneData, water = [], hs = (x, y, s) => { let n = (x * 374761393 + y * 668265263 + s * 2246822519) >>> 0; n = Math.imul(n ^ (n >>> 13), 1274126177); return ((n ^ (n >>> 16)) >>> 0) / 4294967296; };
+    const isW = (x, y) => map.at(x, y) === '~';
+    for (let y = 0; y < map.h; y++) for (let x = 0; x < map.w; x++) {
+      if (!isW(x, y)) continue;
+      const ter = sd && sd.ter[y] ? sd.ter[y][x] : (map.landscape === 'shore' ? 'sea' : 'pond');
+      let kind = 'lake', vx = 0, vy = 0;
+      if (ter === 'stream') { const hor = isW(x - 1, y) || isW(x + 1, y), ver = isW(x, y - 1) || isW(x, y + 1); kind = 'river'; if (hor && !ver) vx = 9; else vy = 9; }
+      else if (ter === 'sea') kind = 'sea';
+      const shore = [[1, 0], [-1, 0], [0, 1], [0, -1]].filter(([dx, dy]) => { const q = map.at(x + dx, y + dy); return q && q !== '~' && !map.solidAt(x + dx, y + dy); });
+      water.push({ x, y, kind, vx, vy, shore, p: hs(x, y, 1), q: hs(x, y, 2) });
+    }
+    const L = GEN_LIFE[map.landscape] || GEN_LIFE.garden, seed = (map.seed || 7) >>> 0;
+    const open = []; for (let y = 1; y < map.h - 1; y++) for (let x = 1; x < map.w - 1; x++) if (!map.solidAt(x, y) && hs(x, y, 3 + seed % 97) < 0.05) open.push([x, y]);
+    const drift = open.slice(0, L.n).map(([x, y], i) => ({ x0: x * T, y0: y * T - 40, sp: 6 + hs(x, y, 5) * 8, ph: hs(x, y, 6), col: L.drift[i % L.drift.length], span: 90 }));
+    const flies = open.slice(L.n, L.n + L.flies).map(([x, y]) => ({ cx: x * T + 8, cy: y * T, a: hs(x, y, 7) * 6.28, sp: 0.25 + hs(x, y, 8) * 0.4, rx: 10 + hs(x, y, 9) * 24, ry: 6 + hs(x, y, 10) * 12, col: L.fly, ph: hs(x, y, 11) * 9 }));
+    map._life = { water, drift, flies };
+    return map._life;
+  }
+  function genUnder(c, world, v, t) {
+    const map = world.map, L = genPrep(map), P = (IW.Outdoor && IW.Outdoor.PAL && IW.Outdoor.PAL[map.landscape]) || null;
+    const lit = P ? P.water[2] : '#9fc0d6';
+    for (const w of L.water) {
+      const ox = w.x * T, oy = w.y * T; if (!inView(ox, oy, v)) continue;
+      if (w.kind === 'river') {
+        for (let k = 0; k < 2; k++) {
+          const ph = fr(w.p + k * 0.5 + t * 0.55 * (0.8 + w.q * 0.4));
+          if (w.vy) px(c, lit, ox + 3 + ((w.q * 9 + k * 5) % 10), oy + ph * 16, 1, 2 + k);
+          else px(c, lit, ox + ph * 16, oy + 4 + ((w.q * 7 + k * 4) % 8), 3, 1);
+        }
+      } else if (w.kind === 'sea') {
+        // 바다: 칸을 가로지르는 느린 너울
+        const sw = Math.sin(t * 0.8 + w.x * 0.45 + w.y * 0.9);
+        if (sw > 0.55) { c.globalAlpha = (sw - 0.55) * 1.6; px(c, lit, ox + ((w.q * 6) | 0), oy + 6 + ((w.p * 6) | 0), 6, 1); c.globalAlpha = 1; }
+      } else {
+        const life = fr(t * (0.12 + w.q * 0.1) + w.p);
+        if (life < 0.7) { c.globalAlpha = Math.sin(life / 0.7 * Math.PI) * 0.8; px(c, lit, ox + 2 + w.q * 9, oy + 3 + w.p * 9, 4, 1); c.globalAlpha = 1; }
+      }
+      for (const [dx, dy] of w.shore) {
+        c.globalAlpha = Math.max(0, 0.3 + 0.35 * Math.sin(t * (w.kind === 'sea' ? 0.9 : 1.3) + w.p * 9 + dx * 2 + dy));
+        if (dy) px(c, '#e8f2f4', ox + 2 + ((w.q * 13) % 10), oy + (dy < 0 ? 2 : 12), 4, 1);
+        else px(c, '#e8f2f4', ox + (dx < 0 ? 1 : 14), oy + 3 + ((w.q * 11) % 9), 1, 3);
+        c.globalAlpha = 1;
+      }
+    }
+  }
+  function genMid(c, world, v, t) {
+    const L = genPrep(world.map);
+    for (const d of L.drift) {
+      const k = fr(t * d.sp / d.span + d.ph), y = d.y0 + k * d.span, x = d.x0 + Math.sin(t * 1.1 + d.ph * 20) * 6 + k * 20;
+      if (!inView(x, y, v)) continue;
+      c.globalAlpha = Math.min(1, Math.sin(k * Math.PI) * 1.5);
+      const flip = Math.sin(t * 3 + d.ph * 30) > 0; px(c, d.col, x, y, flip ? 2 : 1, flip ? 1 : 2);
+      c.globalAlpha = 1;
+    }
+  }
+  function genGlow(c, world, v, t) {
+    const map = world.map, time = (map.mood || {}).time; if (time !== 'night' && time !== 'dusk') return;
+    const L = genPrep(map);
+    c.save(); c.globalCompositeOperation = 'lighter';
+    for (const f of L.flies) {
+      const x = f.cx + Math.cos(t * f.sp + f.a) * f.rx, y = f.cy + Math.sin(t * f.sp * 1.3 + f.a) * f.ry;
+      if (!inView(x, y, v)) continue;
+      const b = Math.max(0, Math.sin(t * 1.7 + f.ph)); if (b < 0.1) continue;
+      c.fillStyle = `rgba(${f.col[0]},${f.col[1]},${f.col[2]},${(b * 0.25).toFixed(2)})`; c.fillRect(Math.round(x) - 1, Math.round(y) - 1, 3, 3);
+      c.fillStyle = `rgba(${f.col[0]},${f.col[1]},${f.col[2]},${(b * 0.9).toFixed(2)})`; c.fillRect(Math.round(x), Math.round(y), 1, 1);
+    }
+    c.restore();
+  }
+
+  IW.RepLife = { under, mid, glow, prep, genUnder, genMid, genGlow, genPrep };
 })(globalThis);
 
 // ---- src/render/render.js ----
@@ -9437,6 +9796,8 @@ body.touch .pad {
     const vw = Math.min(st.width - vx, Math.ceil(W / k) + 3), vh = Math.min(st.height - vy, Math.ceil(H / k) + 3);
     if (vw > 0 && vh > 0) c.drawImage(st, vx, vy, vw, vh, vx, vy, vw, vh);
 
+    const lifeView = { x: vx, y: vy, w: vw, h: vh };
+    if (map.repWorld && IW.RepLife) IW.RepLife.under(c, world, lifeView, t); else if ((map.outdoor || map.sceneData) && IW.RepLife) IW.RepLife.genUnder(c, world, lifeView, t);
     if (map.fountainAt) A.drawFountainWater(c, map.fountainAt[0], map.fountainAt[1], t, flags);
 
     // 빛 웅덩이
@@ -9502,6 +9863,7 @@ body.touch .pad {
       }
     }
 
+    if (map.repWorld && IW.RepLife) IW.RepLife.mid(c, world, lifeView, t); else if ((map.outdoor || map.sceneData) && IW.RepLife) IW.RepLife.genMid(c, world, lifeView, t);
     // 알갱이
     for (const b of world.shots) A.drawShot(c, b, t);
     if (world.inner) IW.Acts.drawOver(c, world, t, snap);
@@ -9512,6 +9874,7 @@ body.touch .pad {
     const tint = map.outdoor ? IW.Outdoor.TIME_TINT[mood.time] : (mood.time === 'night' ? 'rgba(16,20,52,0.22)' : null);
     if (tint) { c.fillStyle = tint; c.fillRect(vx0, vy0, vw0, vh0); }
     if (map.repWorld) IW.RepArt.night(c, map, vx0, vy0, vw0, vh0, t);
+    if (map.repWorld && IW.RepLife) IW.RepLife.glow(c, world, lifeView, t); else if ((map.outdoor || map.sceneData) && IW.RepLife) IW.RepLife.genGlow(c, world, lifeView, t);
     c.globalCompositeOperation = 'lighter';
     const flick = 0.92 + 0.08 * Math.sin(t * 7.3) * Math.sin(t * 3.1);
     c.globalAlpha = flick * (mood.time === 'day' ? 0.35 : 1);
@@ -11070,8 +11433,18 @@ body.touch .pad {
     for (const e of entries) sizes.set(e.target, { w: e.contentRect.width, h: e.contentRect.height });
   }) : null;
   function watch(cv) { if (ro) ro.observe(cv); }
+  // 느린 기기: 실제 프레임 간격이 계속 길면 캔버스 해상도를 한 단계씩 낮춘다 (픽셀 그림은 화면에서 확대되므로 거의 티가 안 난다)
+  const quality = { cap: 3, sum: 0, n: 0, steps: 0 };
+  function watchFrame(interval) {
+    if (interval > 200) return; // 탭 전환 등은 빼고
+    quality.sum += interval; quality.n++;
+    if (quality.n < 90) return;
+    const avg = quality.sum / quality.n; quality.sum = 0; quality.n = 0;
+    const dpr = Math.min(quality.cap, g.devicePixelRatio || 1);
+    if (avg > 24 && dpr > 1) { quality.cap = dpr > 2 ? 2 : dpr > 1.5 ? 1.5 : 1; quality.steps++; }
+  }
   function fit(cv, tilesX, tilesY) {
-    const dpr = Math.min(3, g.devicePixelRatio || 1);
+    const dpr = Math.min(quality.cap, 3, g.devicePixelRatio || 1);
     let s = sizes.get(cv);
     if (!s || !ro) { const r = cv.getBoundingClientRect(); s = { w: r.width, h: r.height }; sizes.set(cv, s); }
     const W = Math.max(1, Math.round(s.w * dpr)), H = Math.max(1, Math.round(s.h * dpr));
@@ -11090,11 +11463,9 @@ body.touch .pad {
   const fmtTime = (s) => `${Math.floor(s / 60)}분 ${String(Math.floor(s % 60)).padStart(2, '0')}초`;
   const overlayOpen = () => !$('pause').hidden || !$('complete').hidden;
 
-  function newGame() {
-    game = official = IW.Game.create(settings.accent);
-    game.reduceMotion = reduceMotion;
-    afterGameSwap();
-  }
+  // 여백의 서고(제작자의 세계)는 하나뿐: 손으로 지은 언덕 마을. 예전 실내 서고 1장은 더 이상 만들지 않는다
+  const TALE_ID = 'tale.yeobaek';
+  function newGame() { try { localStorage.removeItem('innerworld.gen.' + TALE_ID); } catch (_) {} game = official = null; enterTale(); }
 
   // 생성 세계로 들어가기: 설계도(시드+답) → 맵·이야기 생성 → 이 세계의 저장이 있으면 이어서
   function enterWorld(cur) {
@@ -11162,9 +11533,11 @@ body.touch .pad {
     renderHud();
   }
 
+  // 타이틀 배경: 제작자의 세계(여백의 서고) 마을의 밤
   function newPreview() {
-    preview = IW.Game.create(settings.accent);
-    preview.player.x = 13 * 16; preview.player.y = 10 * 16 + 4; preview.player.dir = 'right';
+    try { if (!IW.MAPS.yeobaek) IW.MAPS.yeobaek = IW.TaleData.yeobaek.buildMap(); IW.STORY.yeobaek = IW.STORY.yeobaek || { intro: [], objectives: {}, spot: () => null, discoverTotal: Object.keys(IW.TaleData.yeobaek.LOOK).length }; preview = IW.Game.create(settings.accent, { mapId: 'yeobaek', worldId: 'preview' }); }
+    catch (err) { console.error(err); preview = IW.Game.create(settings.accent); }
+    preview.player.x = 12 * 16 + 8; preview.player.y = 23 * 16 + 12; preview.player.dir = 'right';
   }
 
   // ---------- 로고 ----------
@@ -11203,31 +11576,30 @@ body.touch .pad {
   }
   // 새 여백의 서고(만드는 중): 손으로 지은 세계 + 새 이야기 진행기. 진행은 이 브라우저에만 저장
   function enterTale() {
+    if (game && game.tale && game === official) { afterGameSwap(); show('play'); return; }
     saveGame();
     try { if (!IW.MAPS.yeobaek) IW.MAPS.yeobaek = IW.TaleData.yeobaek.buildMap(); } catch (err) { console.error(err); toast('세계를 열지 못했어요.'); return; }
     IW.STORY.yeobaek = IW.STORY.yeobaek || { intro: [], objectives: {}, spot: () => null, discoverTotal: Object.keys(IW.TaleData.yeobaek.LOOK).length };
-    game = IW.Game.create(settings.accent, { mapId: 'yeobaek', worldId: 'tale.yeobaek' });
+    game = official = IW.Game.create(settings.accent, { mapId: 'yeobaek', worldId: TALE_ID });
     game.reduceMotion = reduceMotion;
     const sv = loadGenSave('tale.yeobaek'); if (sv) IW.Game.restore(game, sv);
     afterGameSwap();
     if (location.hash !== '#play') { try { history.replaceState(null, '', location.pathname + location.search + '#play'); } catch (_) {} }
     show('play');
   }
-  function goPlay() {
-    if (game && game.worldId) { saveGame(); game = official; if (!game) newGame(); else afterGameSwap(); }
-    if (location.hash !== '#play') location.hash = 'play';
-    show('play');
-  }
+  function goPlay() { enterTale(); }
   function goHome() {
     $('pause').hidden = true;
     if (location.hash) { try { history.replaceState(null, '', location.pathname + location.search); } catch (_) { location.hash = ''; } }
     show('home');
   }
   function updateTitleButtons() {
-    const o = official;
-    const inProgress = o && o.started && !o.flags.finished;
-    $('btnPlay').textContent = inProgress ? '여백의 서고 이어서 하기' : (o && o.flags.finished ? '여백의 서고 둘러보기' : '여백의 서고 시작');
-    $('btnRestart').hidden = !(o && o.started);
+    const o = official || loadGenSave(TALE_ID);
+    // 저장본에는 started가 없다: 저장이 있다는 것 자체가 시작했다는 뜻
+    const started = !!o && (o === official ? !!o.started : true);
+    const inProgress = started && !o.flags.finished;
+    $('btnPlay').textContent = inProgress ? '여백의 서고 이어서 하기' : (started && o.flags.finished ? '여백의 서고 둘러보기' : '여백의 서고 시작');
+    $('btnRestart').hidden = !started;
     $('btnRestart').textContent = '처음부터';
     restartArmed = false;
   }
@@ -11242,9 +11614,7 @@ body.touch .pad {
       return;
     }
     restartArmed = false;
-    clearSave();
-    newGame();
-    goPlay();
+    replayTale();
   }
   function showMenu(which) {
     $('menuMain').hidden = which !== 'main';
@@ -11490,7 +11860,7 @@ body.touch .pad {
   function showCompleteTale() {
     const f = game.flags, F = IW.TaleData.yeobaek.FINALE, e = F.endings[f.ending] || F.endings.open;
     const seen = seenEndings('tale.yeobaek');
-    document.querySelector('#complete .win-kicker').textContent = '여백의 서고 — 제작자의 내면을 담은 첫 번째 세계';
+    document.querySelector('#complete .win-kicker').textContent = '여백의 서고 · 제작자의 세계';
     $('cTitle').textContent = e.title;
     document.querySelector('#complete .quote').textContent = e.line;
     document.querySelector('#complete > .win > .fine').textContent = '당신의 선택이 하나의 세계가 된다.';
@@ -11514,7 +11884,7 @@ body.touch .pad {
     $('complete').hidden = false;
     $('btnStay').focus({ preventScroll: true });
   }
-  function replayTale() { try { localStorage.removeItem('innerworld.gen.tale.yeobaek'); } catch (_) {} game = null; enterTale(); }
+  function replayTale() { try { localStorage.removeItem('innerworld.gen.' + TALE_ID); } catch (_) {} game = official = null; enterTale(); }
 
   function showCompleteInner() {
     $('cNote').previousElementSibling.textContent = '숨은 쪽지';
@@ -11647,6 +12017,7 @@ body.touch .pad {
   const perf = { frames: 0, ms: 0, worst: 0 }; // 프레임마다 우리 코드가 쓰는 시간(검사용)
   function frame(now) {
     const dt = Math.min(0.05, Math.max(0, (now - last) / 1000));
+    if (view === 'play' && !document.hidden) watchFrame(now - last);
     last = now;
     // 한 프레임에서 오류가 나도 다음 프레임은 계속 그린다 (화면이 멈추지 않게)
     requestAnimationFrame(frame);
@@ -11691,15 +12062,15 @@ body.touch .pad {
       const ph = (t * 0.11) % 2;
       const go = ph < 1 ? ph : 2 - ph;
       const ease = go < 0.12 ? 0 : go > 0.88 ? 1 : (go - 0.12) / 0.76;
-      const nx = 13 * 16 + ease * 80;
+      const nx = 12 * 16 + 8 + ease * 64;
       const moved = Math.abs(nx - p.x);
       if (moved > 0.01) { p.dir = nx > p.x ? 'right' : 'left'; p.walking = true; p.dist = (p.dist || 0) + moved; p.frame = [1, 2, 3, 0][Math.floor(p.dist / 6) % 4]; }
       else { p.walking = false; p.frame = 0; p.dir = 'up'; }
       p.x = nx;
     }
     const cam = {
-      x: 15.5 * 16 - f.vw / 2 + (reduceMotion ? 0 : Math.sin(t * 0.07) * 70),
-      y: 8.2 * 16 - f.vh / 2 + (reduceMotion ? 0 : Math.sin(t * 0.05 + 1) * 24),
+      x: 14.5 * 16 - f.vw / 2 + (reduceMotion ? 0 : Math.sin(t * 0.07) * 70),
+      y: 20.5 * 16 - f.vh / 2 + (reduceMotion ? 0 : Math.sin(t * 0.05 + 1) * 24),
     };
     IW.Render.drawWorld(cv.getContext('2d'), preview, cam, f.W, f.H, f.k, t);
   }
@@ -11708,18 +12079,12 @@ body.touch .pad {
   function init() {
     input = IW.Input.create({ joy: $('joy'), knob: $('knob'), act: $('act'), guard: $('guard'), isActive: () => view === 'play' && !overlayOpen() });
     newPreview();
-    const saved = loadSave();
-    if (saved) {
-      game = official = IW.Game.create(settings.accent);
-      game.reduceMotion = reduceMotion;
-      if (!IW.Game.restore(game, saved)) { game = official = null; clearSave(); }
-    }
+    // 예전 실내 서고 저장(innerworld.save.v1)은 지우지 않고 그대로 둔다 (데이터 보존). 더 이상 불러오지 않는다
     applySettings();
     watch($('game')); watch($('preview'));
 
     IW.Quiz.init({ onClose: () => { IW.Quiz.refresh(); $('btnQuiz').focus({ preventScroll: true }); }, onEnter: enterWorld, onShare: openShare });
     $('btnPlay').addEventListener('click', goPlay);
-    $('btnTale').addEventListener('click', enterTale);
     $('btnRestart').addEventListener('click', onRestart);
     $('btnSettings').addEventListener('click', () => showMenu('settings'));
     $('btnBack').addEventListener('click', () => { showMenu('main'); $('btnSettings').focus(); });
@@ -11772,12 +12137,12 @@ body.touch .pad {
     g.addEventListener('touchstart', () => document.body.classList.add('touch'), { passive: true, once: true });
 
     const idHash = /^#IW\d+-/i.test(location.hash) ? location.hash.slice(1) : null;
-    if (location.hash === '#play') show('play'); else show('home');
+    if (location.hash === '#play' && loadGenSave(TALE_ID)) enterTale(); else { if (location.hash === '#play') { try { history.replaceState(null, '', location.pathname + location.search); } catch (_) {} } show('home'); }
     if (idHash) IW.Quiz.openId(idHash); // 세계 ID가 붙은 링크로 들어오면 그 세계 설계도를 연다
     requestAnimationFrame(frame);
   }
 
-  IW.App = { enterTale, init, get game() { return game; }, show, settings, perf, trace: null, saveGame, loadSave };
+  IW.App = { enterTale, init, get game() { return game; }, show, settings, perf, quality, trace: null, saveGame, loadSave };
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init); else init();
 })(globalThis);
 
