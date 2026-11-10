@@ -449,6 +449,9 @@ body.touch .pad {
 .win-kicker, .win-foot, .fine, .set-label { letter-spacing: 0; }
 @media (max-width: 640px) { .slip-btn, .slip-count { font-family: var(--f-text); font-size: .9rem; font-weight: 600; } }
 
+.warn { padding: 8px 10px; border-left: 3px solid var(--accent); background: var(--win-2); color: var(--ink); }
+.seg-wrap button { font-size: .9rem; padding: 4px 2px; }
+
 </style>
 
 <!-- 타이틀 화면: 실제 게임 장면 위에 로고와 메뉴 -->
@@ -555,6 +558,7 @@ body.touch .pad {
       <img id="shareImg" alt="세계 공유 카드">
       <p class="fine">이미지를 길게 누르거나(휴대폰) 오른쪽 클릭해서 저장하세요. 보는 곳에 따라 저장이 막혀 있을 수 있어요.</p>
       <p class="fine">친구가 타이틀의 '세계 ID로 열기'에 ID를 넣으면 같은 세계를 걸어 볼 수 있어요.</p>
+      <p class="fine warn" id="shareWarn" hidden></p>
       <div class="bp-id"><code id="shareId">-</code><button id="shareCopy" class="link-btn" type="button">ID 복사</button></div>
       <div class="menu"><button id="shareBack" class="mi" type="button">돌아가기</button></div>
     </div>
@@ -581,6 +585,11 @@ body.touch .pad {
         <span class="set-label">세계 코드</span>
         <code id="bpId">-</code>
         <button id="bpCopy" class="link-btn" type="button">복사</button>
+      </div>
+      <div class="set-row" id="bpVisitor" hidden role="group" aria-label="방문자 기록">
+        <span class="set-label">이 기기에서 누가 걷나요</span>
+        <div class="seg seg-wrap" id="bpVisitorSeg"></div>
+        <p class="fine">같은 기기를 여럿이 쓸 때 진행과 지도를 따로 둬요. 비밀번호가 없어서 다른 칸도 누구나 열 수 있어요.</p>
       </div>
       <p class="fine" id="bpNote">같은 ID는 언제나 같은 세계가 됩니다. 답과 설계도는 이 브라우저에만 저장되고, 세계 ID에는 답의 원문이 담기지 않아요.</p>
       <div class="set-row look-row" role="group" aria-label="내 모습">
@@ -9676,7 +9685,8 @@ body.touch .pad {
     for (const r of Z) if (x >= r[0] && x <= r[2] && y >= r[1] && y <= r[3]) return 1;
     return 0;
   }
-  const tall = (map, x, y) => TALL.has(map.at(x, y)) && !(map.open && map.open.has(x + ',' + y));
+  // 시야를 막는 칸: 높은 것 + 물이 아닌 꽉 막힌 칸(덤불·낮은 바위·책장 등). 덤불로 둘러싼 숨은 터가 밖에서 보이지 않게, 낮은 것 너머도 보지 않는다
+  const tall = (map, x, y) => { const ch = map.at(x, y); return (TALL.has(ch) || (ch !== '~' && map.isSolidFull && map.isSolidFull(ch))) && !(map.open && map.open.has(x + ',' + y)); };
 
   // (tx, ty)에 서서 보이는 칸을 cls에 적는다. 새로 본 칸 수를 돌려준다
   function reveal(cls, map, tx, ty, radius) {
@@ -9715,7 +9725,8 @@ body.touch .pad {
   function pack(cls) { const out = []; for (let i = 0; i < cls.length;) { let n = 1; while (i + n < cls.length && cls[i + n] === cls[i] && n < 255) n++; out.push(cls[i], n); i += n; } return b64(Uint8Array.from(out)); }
   function unpack(s, len) { const cls = new Uint8Array(len), a = unb64(s); let i = 0; for (let k = 0; k + 1 < a.length && i < len; k += 2) { cls.fill(a[k], i, Math.min(len, i + a[k + 1])); i += a[k + 1]; } return i === len ? cls : null; }
   const store = () => { try { return g.localStorage || null; } catch (_) { return null; } };
-  const keyOf = (w) => 'innerworld.atlas.' + (w.worldId || 'official') + '.' + w.mapId + '.' + (w.atlasRole === 'v' ? 'v' : 'o');
+  const roleOf = (w) => (/^v\d?$/.test(w.atlasRole || '') ? w.atlasRole : 'o'); // o 주인 · v, v2, v3 방문자 칸
+  const keyOf = (w) => 'innerworld.atlas.' + (w.worldId || 'official') + '.' + w.mapId + '.' + roleOf(w);
   function load(w) {
     const map = w.map, fresh = { cls: new Uint8Array(map.w * map.h), met: {}, pins: [], last: null, dirty: false };
     const ls = store(); if (!ls) return fresh;
@@ -9731,7 +9742,7 @@ body.touch .pad {
     for (const [id, a] of Object.entries(w.atlas)) {
       if (!a.dirty) continue;
       const map = IW.MAPS[id]; if (!map) continue;
-      try { ls.setItem('innerworld.atlas.' + (w.worldId || 'official') + '.' + id + '.' + (w.atlasRole === 'v' ? 'v' : 'o'), JSON.stringify({ v: 1, w: map.w, h: map.h, c: pack(a.cls), m: a.met, p: a.pins })); a.dirty = false; } catch (_) {}
+      try { ls.setItem('innerworld.atlas.' + (w.worldId || 'official') + '.' + id + '.' + roleOf(w), JSON.stringify({ v: 1, w: map.w, h: map.h, c: pack(a.cls), m: a.met, p: a.pins })); a.dirty = false; } catch (_) {}
     }
   }
   // 이 세계의 발견 기록 지우기 (처음부터 다시 할 때). role을 주면 그 사람 것만
@@ -15754,7 +15765,7 @@ body.touch .pad {
   // ---------- 질문 흐름 ----------
   function start() {
     const seed = Q.newSeed();
-    state = { seed, answers: Array(10).fill(null), free: {}, share: { thing: true, person: false, scene: false, name: true, notes: true }, i: 0 };
+    state = { seed, answers: Array(10).fill(null), free: {}, share: { thing: false, person: false, scene: false, name: true, notes: true }, i: 0 }; // 2026-11-10: '좋아하는 것' 원문은 기본 비공개(무기는 모양 번호로 같게 만들어진다). 세계 이름만 기본 공개
     show('quiz');
     render(true);
   }
@@ -15947,9 +15958,12 @@ body.touch .pad {
     renderDiff();
     $('bpKicker').textContent = visitor ? '받은 세계' : '나의 세계';
     $('bpAgain').textContent = visitor ? '나도 내 세계 만들기' : '처음부터 다시 답하기';
-    fillBp(d.name, d.lines, code, visitor
+    // 받은 세계의 설계도에서는 숨은 곳을 미리 말하는 뒷문장을 뺀다 (세계 자체는 그대로)
+    const lines = visitor ? d.lines.map(([k, v]) => (k === '이 세계의 한 문장' ? [k, firstSentence(v)] : [k, v])) : d.lines;
+    fillBp(d.name, lines, code, visitor
       ? '세계 주인이 보여 주기로 한 것만 보여요. 걸으면서 이 사람을 조금씩 알게 될 거예요.'
-      : '공유 코드에는 "보임"으로 고른 답만 담겨요. 객관식 답은 숫자로만 들어가고 화면에 나오지 않아요.');
+      : leakNote(current));
+    renderVisitor();
   }
 
   // 난이도: 내 세계는 기본 난이도로 저장(공유 코드에도 담김), 받은 세계는 이번 플레이에만
@@ -15974,6 +15988,27 @@ body.touch .pad {
     renderDiff();
   }
 
+  const firstSentence = (s) => { const i = String(s).indexOf('. '); return i < 0 ? String(s) : String(s).slice(0, i + 1); };
+  // 공유 전에 알려 주기: 이 코드에서 되살릴 수 있는 것 (IW2~IW5 코드는 답 번호가 그대로 들어 있다)
+  function leakNote(cur) {
+    if (!cur || cur.visitor) return '';
+    const pub = shareCode(cur.seed, cur.answers, cur.free || {}, cur.share || {}, cur.diff, cur.gv).pub;
+    const LB = { thing: '좋아하는 것', person: '세계 속의 그 사람', scene: '기억 장면의 한 줄', name: '세계 이름' };
+    const shown = Object.keys(LB).filter((k) => pub[k]).map((k) => LB[k]);
+    return '알아 두세요: 이 코드에는 질문에 고른 답 10개가 번호로 들어 있어요. 화면에는 나오지 않지만, 사이트의 구조를 아는 사람은 코드에서 답을 알아낼 수 있어요.'
+      + (shown.length ? ` 공개로 켠 항목(${shown.join(', ')})은 쓴 글 그대로 들어 있어요.` : ' 직접 쓴 글은 들어 있지 않아요.')
+      + ' 무기는 모양 번호로만 들어가요. 코드를 받은 사람만 볼 수 있으니, 보여 줘도 괜찮은 사람에게만 보내세요.';
+  }
+  // 받은 세계: 같은 기기를 여러 사람이 쓸 때 기록을 나누는 방문자 칸 (비밀번호 없음 — 신원 확인이 아니다)
+  const VP = ['v', 'v2', 'v3'];
+  function hasVisitorSave(core, role) { try { return localStorage.getItem('innerworld.gen.' + core + '~' + role) != null || Object.keys(localStorage).some((k) => k.startsWith('innerworld.atlas.' + core + '.') && k.endsWith('.' + role)); } catch (_) { return false; } }
+  function renderVisitor() {
+    const box = $('bpVisitor'); if (!box) return;
+    box.hidden = !(current && current.visitor && current.v === 2); if (box.hidden) return;
+    if (!VP.includes(current.vp)) { let last = null; try { last = localStorage.getItem('innerworld.vp.' + current.core); } catch (_) {} current.vp = VP.includes(last) ? last : 'v'; }
+    const seg = $('bpVisitorSeg'); seg.innerHTML = '';
+    VP.forEach((r, i) => { const b = document.createElement('button'); b.type = 'button'; b.setAttribute('aria-pressed', String(current.vp === r)); b.textContent = `방문자 ${i + 1}` + (hasVisitorSave(current.core, r) ? ' · 이어하기' : ' · 새로'); b.addEventListener('click', () => { current.vp = r; try { localStorage.setItem('innerworld.vp.' + current.core, r); } catch (_) {} IW.Sound.play('ui'); renderVisitor(); }); seg.append(b); });
+  }
   function fillBp(name, lines, id, note) {
     $('bpName').textContent = name;
     $('bpLines').innerHTML = '';
@@ -16130,7 +16165,7 @@ body.touch .pad {
   function selectId() { const r = document.createRange(); r.selectNodeContents($('bpId')); const s = getSelection(); s.removeAllRanges(); s.addRange(r); $('bpCopy').textContent = '선택됨 · 길게 눌러 복사'; }
   function refresh() { $('btnMyBp').hidden = !load(); }
 
-  IW.Quiz = { init, keys, isOpen, close, refresh, start, load, show, openId, showBlueprint, openLab, setShareEnding, get current() { return current; }, get state() { return state; } };
+  IW.Quiz = { init, keys, isOpen, close, refresh, start, load, show, openId, showBlueprint, openLab, setShareEnding, leakNote, get current() { return current; }, get state() { return state; } };
 })(globalThis);
 
 // ---- src/ui/app.js ----
@@ -16179,8 +16214,11 @@ body.touch .pad {
   // ---------- 저장 (이 브라우저의 localStorage. 서버 저장이 아니다) ----------
   // 주인과 방문자의 기록을 나눈다: 방문자 저장 이름에는 ~v가 붙는다. 주인 저장 이름은 예전 그대로다.
   // (예전에는 이름이 세계 코드 하나뿐이라, 같은 기기에서 주인과 방문자로 번갈아 열면 진행이 섞였다)
-  const isV = (g2) => !!(g2 && g2.atlasRole === 'v');
-  const keyFor = (g2) => (g2 && g2.worldId ? 'innerworld.gen.' + g2.worldId + (isV(g2) ? '~v' : '') : SAVE_KEY);
+  // 방문자 칸: 'v'(첫 칸, 예전 방문 기록을 이어받는다) · 'v2' · 'v3'. 같은 기기를 여럿이 쓸 때 기록을 나눈다 (신원 확인이 아니다)
+  const isV = (g2) => !!(g2 && /^v\d?$/.test(g2.atlasRole || ''));
+  const roleOf = (cur) => (cur && cur.visitor ? (/^v[23]$/.test(cur.vp || '') ? cur.vp : 'v') : null);
+  const sfx = (g2) => (isV(g2) ? '~' + g2.atlasRole : '');
+  const keyFor = (g2) => (g2 && g2.worldId ? 'innerworld.gen.' + g2.worldId + sfx(g2) : SAVE_KEY);
   // 이 기기가 그 세계의 주인인가 (내 설계도로 저장된 세계와 같은 세계인가)
   function ownsWorld(core) {
     try { const own = JSON.parse(localStorage.getItem('innerworld.owned') || '[]'); if (Array.isArray(own) && own.includes(core)) return true; } catch (_) {}
@@ -16191,7 +16229,9 @@ body.touch .pad {
   function readRole(base, visitor, core) {
     try {
       if (!visitor) return localStorage.getItem(base);
-      const v = localStorage.getItem(base + '~v'); if (v != null) return v;
+      const role = typeof visitor === 'string' ? visitor : 'v';
+      const v = localStorage.getItem(base + '~' + role); if (v != null) return v;
+      if (role !== 'v') return null; // 둘째·셋째 칸은 늘 새 기록에서 시작
       return ownsWorld(core) ? null : localStorage.getItem(base);
     } catch (_) { return null; }
   }
@@ -16261,8 +16301,8 @@ body.touch .pad {
     IW.STORY.gen = IW.GenStory.make(bp, map, free);
     game = IW.Game.create(settings.accent, { mapId: 'gen', worldId: cur.id });
     game.reduceMotion = reduceMotion;
-    game.atlasRole = cur.visitor ? 'v' : 'o';
-    const sv = loadGenSave(cur.id, cur.visitor);
+    game.atlasRole = roleOf(cur) || 'o';
+    const sv = loadGenSave(cur.id, roleOf(cur));
     if (sv) IW.Game.restore(game, sv);
     afterGameSwap();
     if (location.hash !== '#play') { try { history.replaceState(null, '', location.pathname + location.search + '#play'); } catch (_) {} }
@@ -16292,26 +16332,26 @@ body.touch .pad {
     game = IW.Game.create(settings.accent, { mapId: 'gen', worldId: diff === 'normal' ? core : core + '.' + diff });
     game.diff = diff;
     game.reduceMotion = reduceMotion;
-    game.cur = cur; game.atlasRole = cur.visitor ? 'v' : 'o';
-    const sv = loadGenSave(core, cur.visitor);
+    game.cur = cur; game.atlasRole = roleOf(cur) || 'o';
+    const sv = loadGenSave(core, roleOf(cur));
     if (sv) IW.Game.restore(game, sv);
     afterGameSwap();
     if (location.hash !== '#play') { try { history.replaceState(null, '', location.pathname + location.search + '#play'); } catch (_) {} }
     show('play');
   }
   const endingsKey = (core) => 'innerworld.endings.' + core;
-  const curV = () => !!(game && isV(game));
+  const curV = () => (game && isV(game) ? game.atlasRole : false);
   // 난이도별 최고 기록 — 이 브라우저에만. 난이도가 다른 기록끼리 섞지 않는다
   const bestKey = () => 'innerworld.best.' + game.worldId.split('.')[0] + '.' + (game.diff || 'normal');
   const bestCore = () => game.worldId.split('.')[0];
-  function saveBest() { const t = game.finishedAt || game.playTime; try { const b = loadBest(); if (!b || t < b) localStorage.setItem(bestKey() + (curV() ? '~v' : ''), String(Math.round(t))); } catch (_) {} }
+  function saveBest() { const t = game.finishedAt || game.playTime; try { const b = loadBest(); if (!b || t < b) localStorage.setItem(bestKey() + sfx(game), String(Math.round(t))); } catch (_) {} }
   function loadBest() { return +readRole(bestKey(), curV(), bestCore()) || 0; }
-  function seenEndings(core, visitor) { const v = visitor == null ? curV() : !!visitor; try { const a = JSON.parse(readRole(endingsKey(core), v, core) || '[]'); return Array.isArray(a) ? a : []; } catch (_) { return []; } }
-  function addEnding(core, id) { const a = seenEndings(core); if (!a.includes(id)) a.push(id); try { localStorage.setItem(endingsKey(core) + (curV() ? '~v' : ''), JSON.stringify(a)); } catch (_) {} }
+  function seenEndings(core, visitor) { const v = visitor == null ? curV() : visitor; try { const a = JSON.parse(readRole(endingsKey(core), v, core) || '[]'); return Array.isArray(a) ? a : []; } catch (_) { return []; } }
+  function addEnding(core, id) { const a = seenEndings(core); if (!a.includes(id)) a.push(id); try { localStorage.setItem(endingsKey(core) + sfx(game), JSON.stringify(a)); } catch (_) {} }
   function replayInner() {
     if (!game || !game.cur) return;
     try { localStorage.removeItem(keyFor(game)); } catch (_) {}
-    IW.Atlas.clear(game.worldId, isV(game) ? 'v' : 'o'); // 처음부터: 내 탐험 지도도 새 종이로
+    IW.Atlas.clear(game.worldId, isV(game) ? game.atlasRole : 'o'); // 처음부터: 내 탐험 지도도 새 종이로
     const cur = game.cur;
     game = null;
     enterInner(cur);
@@ -16796,9 +16836,8 @@ body.touch .pad {
     // 보이는 범위를 감싸는 상자를 3:2로 맞춘다 (가려진 곳이 그림을 다 차지하지 않게)
     let bx0 = map.w, by0 = map.h, bx1 = 0, by1 = 0;
     for (let i = 0; i < seen.length; i++) if (seen[i] & 31) { const x = i % map.w, y = (i / map.w) | 0; if (x < bx0) bx0 = x; if (x > bx1) bx1 = x; if (y < by0) by0 = y; if (y > by1) by1 = y; }
-    let VW = bx1 - bx0 + 3, VH = by1 - by0 + 3;
-    if (VW < VH * 1.5) VW = Math.ceil(VH * 1.5); else VH = Math.ceil(VW / 1.5);
-    VW = Math.min(map.w, VW); VH = Math.min(map.h, VH);
+    // 보이는 범위에 딱 맞게 자른다. (예전: 3:2로 억지로 넓혀서, 도착 자리가 지도 가장자리인 섬 세계는 카드 절반이 가려진 칸으로 찼다)
+    let VW = Math.min(map.w, bx1 - bx0 + 3), VH = Math.min(map.h, by1 - by0 + 3);
     const x0 = Math.max(0, Math.min(map.w - VW, Math.round((bx0 + bx1 + 1 - VW) / 2))), y0 = Math.max(0, Math.min(map.h - VH, Math.round((by0 + by1 + 1 - VH) / 2)));
     const cv = IW.Art.canvas(VW * 16, VH * 16), c = cv.getContext('2d');
     c.drawImage(st, x0 * 16, y0 * 16, VW * 16, VH * 16, 0, 0, VW * 16, VH * 16);
@@ -16819,7 +16858,7 @@ body.touch .pad {
     const map = IW.WorldGen.generate(bp);
     const W = 1080, H = 1350;
     const cv = IW.Art.canvas(W, H), c = cv.getContext('2d');
-    const sv = loadGenSave(cur.id, cur.visitor);
+    const sv = loadGenSave(cur.id, roleOf(cur));
     c.fillStyle = '#ffffff'; c.fillRect(0, 0, W, H);
     // 지도
     let st = IW.Outdoor.buildStatic(map, {});
@@ -16851,7 +16890,7 @@ body.touch .pad {
   }
   function makeShareCardIW4(cur) {
     const sp = iw4PlanOf(cur), { map } = IW.IW4.build(sp, cur.seed);
-    const core = IW.Inner.coreOf(cur.id), sv = loadGenSave(core, cur.visitor), seen = seenEndings(core, cur.visitor);
+    const core = IW.Inner.coreOf(cur.id), sv = loadGenSave(core, roleOf(cur)), seen = seenEndings(core, roleOf(cur) || false);
     const W = 1080, H = 1350, cv = IW.Art.canvas(W, H), c = cv.getContext('2d');
     c.fillStyle = '#ffffff'; c.fillRect(0, 0, W, H);
     const st = arrivalPicture(map, mapPicture(map, false));
@@ -16864,7 +16903,8 @@ body.touch .pad {
     c.fillText(sp.name, W / 2, my + mh + 86, W - 100);
     c.fillStyle = '#4a4d52'; c.font = "31px 'Pretendard', 'Apple SD Gothic Neo', sans-serif";
     // 한 문장을 두 줄로
-    const words = sp.sentence.split(' '); let line = '', y = my + mh + 140; const lines = [];
+    // 숨은 곳을 말하는 뒷문장은 카드에 싣지 않는다 (세계의 문장 자체는 그대로)
+    const words = sp.sentence.slice(0, sp.sentence.indexOf('. ') < 0 ? undefined : sp.sentence.indexOf('. ') + 1).split(' '); let line = '', y = my + mh + 140; const lines = [];
     for (const wd of words) { const t2 = line ? line + ' ' + wd : wd; if (c.measureText(t2).width > W - 160) { lines.push(line); line = wd; } else line = t2; } if (line) lines.push(line);
     for (const l of lines.slice(0, 3)) { c.fillText(l, W / 2, y, W - 120); y += 44; }
     if (sv && sv.flags && sv.flags.ending && cur.share && cur.share.e) c.fillText(`내가 고른 결말: ${sp.endings[sv.flags.ending].title} (${seen.length}/3)`, W / 2, y + 20, W - 100);
@@ -16877,7 +16917,7 @@ body.touch .pad {
     const p = innerPlanOf(cur);
     const { map } = IW.InnerPlan.build(p, cur.seed);
     const core = IW.Inner.coreOf(cur.id);
-    const sv = loadGenSave(core, cur.visitor), seen = seenEndings(core, cur.visitor);
+    const sv = loadGenSave(core, roleOf(cur)), seen = seenEndings(core, roleOf(cur) || false);
     const W = 1080, H = 1350;
     const cv = IW.Art.canvas(W, H), c = cv.getContext('2d');
     c.fillStyle = '#ffffff'; c.fillRect(0, 0, W, H);
@@ -16911,8 +16951,10 @@ body.touch .pad {
     return cv.toDataURL('image/png');
   }
   function openShare(cur) {
-    try { $('shareImg').src = makeShareCard(cur); } catch (err) { toast('공유 카드를 만들지 못했어요.'); return; }
+    try { $('shareImg').src = makeShareCard(cur); } catch (err) { console.error(err); toast('공유 카드를 만들지 못했어요.'); return; }
     $('shareId').textContent = cur.id; $('shareCopy').textContent = cur.v === 2 ? '코드 복사' : 'ID 복사';
+    const warn = cur.v === 2 ? IW.Quiz.leakNote(cur) : (cur.visitor ? '' : '알아 두세요: 이 ID에는 질문에 고른 답이 번호로 들어 있어요. 사이트의 구조를 아는 사람은 답을 알아낼 수 있어요.');
+    $('shareWarn').textContent = warn; $('shareWarn').hidden = !warn;
     IW.Quiz.show('share');
     $('shareBack').focus({ preventScroll: true });
   }
