@@ -1192,9 +1192,9 @@ body.touch .pad {
   function encode(seed, answers, pub, gv) {
     let n = 0;
     for (let i = 9; i >= 0; i--) n = n * 5 + answers[i];
-    let id = `IW${gv === 5 ? 5 : gv === 4 ? 4 : gv === 3 ? 3 : 2}-${seed.toString(36).toUpperCase()}-${n.toString(36).toUpperCase()}`;
+    let id = `IW${gv === 6 ? 6 : gv === 5 ? 5 : gv === 4 ? 4 : gv === 3 ? 3 : 2}-${seed.toString(36).toUpperCase()}-${n.toString(36).toUpperCase()}`;
     const keep = {};
-    if (pub) for (const k of ['thing', 'person', 'scene', 'name']) if (pub[k]) keep[k] = pub[k];
+    if (pub && gv !== 6) for (const k of ['thing', 'person', 'scene', 'name']) if (pub[k]) keep[k] = pub[k];
     if (pub && pub.notes === false) keep.n = 0;
     if (pub && pub.w) keep.w = pub.w;
     if (pub && (pub.d === 'e' || pub.d === 'h')) keep.d = pub.d;
@@ -1208,11 +1208,12 @@ body.touch .pad {
   function decode(raw) {
     const s = String(raw || '').trim().replace(/^#/, '');
     const [head, tail] = s.split('~');
-    const m = /^IW([2345])-([0-9A-Z]{1,8})-([0-9A-Z]{1,8})$/i.exec(head || '');
+    const m = /^IW([23456])-([0-9A-Z]{1,8})-([0-9A-Z]{1,8})$/i.exec(head || '');
     if (!m) return null;
     const gv = +m[1];
     const seed = parseInt(m[2], 36), n0 = parseInt(m[3], 36);
     if (!Number.isFinite(seed) || !Number.isFinite(n0)) return null;
+    if(gv===6&&seed>0xffffffff)return null;
     let n = n0;
     const answers = [];
     for (let i = 0; i < 10; i++) { answers.push(n % 5); n = Math.floor(n / 5); }
@@ -1221,9 +1222,9 @@ body.touch .pad {
     if (tail) {
       try {
         const o = JSON.parse(b64d(tail));
-        for (const f of FREE) if (typeof o[f.id] === 'string') { const c = IW.Questions.cleanFree(o[f.id], f.max); if (c.ok && c.text) pub[f.id] = c.text; }
+        if(gv!==6)for (const f of FREE) if (typeof o[f.id] === 'string') { const c = IW.Questions.cleanFree(o[f.id], f.max); if (c.ok && c.text) pub[f.id] = c.text; }
         if (o.n === 0) notes = false;
-        if (typeof o.w === 'string' && /^[ds][a-z0-9-]{1,30}$/.test(o.w)) pub.w = o.w;
+        if (typeof o.w === 'string' && (gv===6?/^(?:[ds][a-z0-9-]{1,30}|f[0-7])$/:/^[ds][a-z0-9-]{1,30}$/).test(o.w)) pub.w = o.w;
         if (o.d === 'e' || o.d === 'h') pub.d = o.d;
         if (typeof o.e === 'string' && /^[a-z]{2,8}$/.test(o.e)) pub.e = o.e;
       } catch (_) { /* 깨진 꼬리는 무시하고 세계만 연다 */ }
@@ -11680,6 +11681,539 @@ body.touch .pad {
   IW.Story4 = { setup, begin, update, talk, spot, objectiveText, faint, drawUnder, drawOver, refresh, applyRows, say, ask, walkTo, npc, px, tileOf, dirTo, startDuel, startDefend, startSneak, startObserve, endEnc, finish, ev, setRow, onTidal, sneakSees };
 })(globalThis);
 
+// ---- src/gen6/facets.js ----
+/* IW6 research foundation. No shared-code or save routing until a tile slice is reviewed. */
+(function (g) {
+  const N = (g.IW = g.IW || {}).IW6 = {};
+  N.schema = 'IW6-v1';
+  N.values = {
+    dist: ['near','open','slow','far'], expr: ['open','mask','deflect','later'],
+    conf: ['confront','endure','withdraw','understand'], val: ['principle','people','heart','future'],
+    fear: ['disliked','fail','loss','stuck'], joy: ['together','immersed','new','helpful'],
+    mask: ['bright','calm','strong','unknown','same'], regret: ['unsaid','missed','ended','none'],
+    wish: ['understood','free','safe','grow'], cope: ['reach','brood','guard','leave']
+  };
+  // Every row combines answers; values describe world rules, never the person.
+  N.facetRules = {
+    branching: { dist: [3,2,1,0], joy: [2,0,3,1] },
+    privacy: { mask: [1,2,3,4,0], expr: [0,3,1,2], fear:[2,1,3,0] },
+    mediation: { conf: [0,1,2,3], val: [0,3,1,2], wish:[3,1,2,0] },
+    archive: { regret: [3,2,4,0], val: [2,1,0,3], fear:[2,0,3,1] },
+    urgency: { cope: [3,2,1,0], conf: [3,1,0,2] }
+  };
+  N.interpret = function (t) {
+    for (const [k, vals] of Object.entries(N.values)) if (!vals.includes(t[k])) throw Error('Invalid trait: ' + k);
+    const out = {};
+    for (const [facet, rules] of Object.entries(N.facetRules)) {
+      out[facet] = Object.entries(rules).reduce((n, [k, weights]) => n + weights[N.values[k].indexOf(t[k])], 0);
+    }
+    return out;
+  };
+  N.random = function (seed, stage) {
+    let s = (seed ^ Math.imul(stage, 0x9e3779b1)) >>> 0;
+    return () => { s = (s + 0x6D2B79F5) | 0; let t = Math.imul(s ^ s >>> 15, 1 | s); t ^= t + Math.imul(t ^ t >>> 7, 61 | t); return ((t ^ t >>> 14) >>> 0) / 4294967296; };
+  };
+})(globalThis);
+
+// ---- src/gen6/places.js ----
+(function (N) {
+  // Contracts, not rendered props: layout/dress must later realize these objects.
+  N.places = {
+    gate: { name: '축제 문', purpose: '반납된 가면을 분류하는 곳', objects: ['return-rack','empty-hook'] },
+    bell: { name: '종 수리소', purpose: '울리지 않는 종에서 마지막 행렬의 시각을 확인', objects: ['bell','repair-ledger'] },
+    post: { name: '반송 우체국', purpose: '도착하지 못한 초대장의 수신인을 찾음', objects: ['mailbox','returned-letter'] },
+    dye: { name: '염색 공방', purpose: '가면 안쪽의 염료로 주인을 구별', objects: ['dye-vat','drying-rack'] },
+    court: { name: '행렬 대기마당', purpose: '문지기와 행렬의 통행을 협의', objects: ['barrier','queue-rope'] },
+    archive: { name: '지난 축제 기록실', purpose: '문지기와 수선공 사이에 남은 약속을 확인', objects: ['ledger','paired-masks'] },
+    stage: { name: '빈 무대', purpose: '관객 앞에서 가면의 주인을 결정', objects: ['curtain','mask-stand'] },
+    garden: { name: '막 뒤 정원', purpose: '당사자끼리 가면의 주인을 결정', objects: ['bench','mask-stand'] }
+  };
+})(IW.IW6);
+
+// ---- src/gen6/beats/masks.js ----
+(function (N) {
+  // Witnesses produce evidence by different actions, tied to the place's function.
+  N.evidence = [
+    { kind: 'bell', id: 'last-chime', text: '고장 난 종의 기록과 행렬 시각이 어긋나 있다.', method: 'compare-clock', object: 'repair-ledger' },
+    { kind: 'post', id: 'unsent-invitation', text: '반송된 초대장에 가면 안쪽과 같은 표식이 있다.', method: 'match-address', object: 'returned-letter' },
+    { kind: 'dye', id: 'inside-colour', text: '겉칠 아래에 다른 공방의 색이 남아 있다.', method: 'wash-pigment', object: 'dye-vat' }
+  ];
+  N.endings = {
+    shared: '문지기가 줄을 걷는다. 수선공과 함께 가면을 반납대에 건다.',
+    claimed: '빈 걸이에 가면을 걸고, 누구의 것이었는지 기록을 남긴다.',
+    quiet: '행렬이 지나간 뒤 가면을 돌려준다. 정원 쪽 문이 열려 있다.'
+  };
+})(IW.IW6);
+
+// ---- src/gen6/story.js ----
+(function (N) {
+  N.generate = function (traits, seed) {
+    if (!Number.isInteger(seed) || seed < 0 || seed > 0xffffffff) throw Error('Invalid seed');
+    const f = N.interpret(traits), R = N.random(seed, 2);
+    const e = N.evidence[(f.archive + f.privacy + Math.floor(R() * 3)) % 3];
+    const access = e.kind === 'dye' ? 'court' : (f.mediation >= 4 ? 'dye' : 'court');
+    const venue = traits.wish==='free'?'garden':(f.privacy + f.mediation) % 2 ? 'garden' : 'stage';
+    const memory = f.archive >= 3 || traits.joy === 'new' || traits.cope === 'brood' || traits.wish==='grow' || ['loss','stuck'].includes(traits.fear);
+    const nodes = [], beats = [], edges = [];
+    const place = (id, kind, why, owner) => {
+      nodes.push({ id, kind, why, owner, purpose: N.places[kind].purpose,
+        objects: N.places[kind].objects.map(kind => ({ kind, why: id + ':' + why })) });
+    };
+    const choice = (id, label, give, effect, needs) => ({ id, label, give, effect, needs: needs || [] });
+    place('entry', 'gate', 'arrival', 'maker');
+    place('evidence', e.kind, e.id, 'witness');
+    place('access', access, 'passage', 'keeper');
+    if (memory) place('memory', 'archive', 'old-promise', 'maker');
+    place('final', venue, 'return-mask', 'keeper');
+    const relation = f.mediation >= 6 || traits.joy === 'together' ? 'care' : 'debt';
+    beats.push({ id: 'arrival', place: 'entry', actor: 'maker', object: 'empty-hook', requires: [],
+      text: '반납대에 가면 하나가 비었다. 문지기는 행렬이 끝나기 전에 주인을 확인하려 한다.',
+      choices: [choice('accept', '빈 걸이를 살핀다', ['started'], {})] });
+    beats.push({ id: e.id, place: 'evidence', actor: 'witness', object: e.object, requires: traits.wish==='grow'?['started','promise']:['started'], text: e.text,
+      choices: [choice(e.method, '기록과 흔적을 맞춰 본다', ['proof'], { openness: 1 }),
+        choice('ask-witness', '증인과 함께 확인한다', ['proof'], { trust: 1 })] });
+    const choices = [choice('claim', '확인한 흔적으로 통행을 요구한다', ['pass'], { openness: 2 }, ['proof']),
+      choice('repair', '행렬 준비를 도와 통행을 얻는다', ['pass'], { trust: 1 })];
+    if (relation === 'care' || memory) choices.push(Object.assign(
+      choice('mediate', '수선공과 문지기를 함께 부른다', ['pass'], { trust: 2 }, ['proof']),
+      { relationOrToken: { a: 'maker', b: 'keeper', kind: 'care', token: 'promise' } }));
+    if(traits.joy==='helpful'){choices.find(c=>c.id==='repair').effect={trust:2};choices.find(c=>c.id==='repair').label='함께 행렬 준비를 마친다';}
+    if(traits.cope==='guard')choices.splice(choices.findIndex(c=>c.id==='repair'),1);
+    if(traits.cope==='leave'){const c=choices.find(c=>c.id==='repair');c.id='after-procession';c.label='기록을 남기고 행렬이 지나기를 기다린다';c.effect={openness:1};c.needs=['proof'];}
+    beats.push({ id: 'passage', place: 'access', actor: 'keeper', object: N.places[access].objects[0], requires: traits.cope==='brood'?['started','proof']:['started'],
+      text: access === 'court' ? '문지기가 끊어진 행렬 줄을 붙잡고 있다.' : '염료가 마르지 않아 행렬의 가면이 나가지 못한다.', choices });
+    if (memory) beats.push({ id: 'old-promise', place: 'memory', actor: 'maker', object: 'paired-masks', requires: ['started'],
+      text: '기록 속 두 가면은 수선공과 문지기가 함께 만들었다.',
+      choices: [choice('remember', '함께 만든 기록을 가져간다', ['promise','shortcut'], { trust: 1 })] });
+    const finalNeeds=['proof','pass',...(traits.fear==='loss'?['promise']:traits.fear==='stuck'?['shortcut']:[])];
+    beats.push({ id: 'return-mask', place: 'final', actor: 'keeper', object: 'mask-stand', requires: finalNeeds,
+      text: '돌려받은 가면을 어디에 남길까.', choices: [choice('return', '가면을 반납대에 건다', ['finished'], {})] });
+    const link = (a, b, kind, requires = []) => edges.push({ a, b, kind, requires });
+    // Two causally different route structures; no coordinates/colours used to claim diversity.
+    const parallel = traits.dist === 'near' || traits.dist === 'open';
+    if (traits.dist === 'far') { link('entry','access','quiet-walk'); link('access','evidence','work-route'); }
+    else { link('entry', 'evidence', 'street'); link(parallel ? 'entry' : 'evidence', 'access', parallel ? 'alley' : 'work-route'); }
+    if (traits.dist === 'near') link('evidence','access','festival-walk');
+    if (memory) {
+      link(f.privacy >= 4 ? 'access' : 'entry', 'memory', f.privacy >= 4 ? 'hidden' : 'street');
+      link('memory', 'evidence', 'shortcut', ['shortcut']);
+    }
+    link('access', 'final', f.urgency >= 4 ? 'procession-gate' : 'door', finalNeeds);
+    return { schema: N.schema, seed, theme: 'masks', facets: f, start: 'entry', nodes, edges, beats,
+      npcs: [{ id: 'maker', goal: '빈 걸이를 채운다', home: 'entry' },
+        { id: 'keeper', goal: '행렬을 무사히 출발시킨다', home: 'access' },
+        { id: 'witness', goal: '잘못 남은 기록을 바로잡는다', home: 'evidence' }],
+      relations: [{ a: 'maker', b: 'keeper', kind: relation }],
+      provenance: N.facetRules };
+  };
+})(IW.IW6);
+
+// ---- src/gen6/check.js ----
+(function (N) {
+  N.initial = w => ({ at: w.start, done: [], flags: [], trust: 0, openness: 0, ending: null });
+  const has = (s, req) => req.every(x => s.flags.includes(x));
+  N.actions = function (w, s) {
+    if (s.ending) return [];
+    const out = [];
+    for (const e of w.edges) if ((e.a === s.at || e.b === s.at) && has(s, e.requires))
+      out.push({ type: 'move', to: e.a === s.at ? e.b : e.a });
+    for (const b of w.beats) if (b.place === s.at && !s.done.includes(b.id) && has(s, b.requires))
+      for (const c of b.choices) {
+        const r = c.relationOrToken;
+        const relationOK = !r || s.flags.includes(r.token) || w.relations.some(x => x.a === r.a && x.b === r.b && x.kind === r.kind);
+        if (has(s, c.needs) && relationOK) out.push({ type: 'choose', beat: b.id, choice: c.id });
+      }
+    return out;
+  };
+  N.step = function (w, s, action) {
+    if (!N.actions(w, s).some(a => JSON.stringify(a) === JSON.stringify(action))) throw Error('Illegal action');
+    const next = JSON.parse(JSON.stringify(s));
+    if (action.type === 'move') next.at = action.to;
+    else {
+      const b = w.beats.find(b => b.id === action.beat), c = b.choices.find(c => c.id === action.choice);
+      next.done.push(b.id); next.done.sort(); next.flags = [...new Set([...s.flags, ...c.give])].sort();
+      for (const [k, v] of Object.entries(c.effect)) next[k] += v;
+      if (next.flags.includes('finished')) next.ending = next.trust >= 3 ? 'shared' : next.openness >= 2 ? 'claimed' : 'quiet';
+    }
+    return next;
+  };
+  // Exhaustive graph-state search, including movement and all choices. This is NOT a tile play bot.
+  N.explore = function (w, limit = 20000) {
+    const first = N.initial(w), states = [first], ids = new Map([[JSON.stringify(first), 0]]), links = [], parents = [null];
+    for (let i = 0; i < states.length; i++) {
+      links[i] = [];
+      for (const a of N.actions(w, states[i])) {
+        const s = N.step(w, states[i], a), key = JSON.stringify(s);
+        if (!ids.has(key)) { ids.set(key, states.length); states.push(s); parents.push([i, a]); }
+        links[i].push(ids.get(key));
+        if (states.length > limit) throw Error('State budget exceeded');
+      }
+    }
+    // Every reachable state must have a route to an ending (cycles alone are not progress).
+    const reverse = states.map(() => []), good = new Set(), q = [];
+    links.forEach((ls, i) => ls.forEach(j => reverse[j].push(i)));
+    states.forEach((s, i) => { if (s.ending) { good.add(i); q.push(i); } });
+    for (let i = 0; i < q.length; i++) for (const p of reverse[q[i]]) if (!good.has(p)) { good.add(p); q.push(p); }
+    const traces = {};
+    states.forEach((s, i) => {
+      if (!s.ending || traces[s.ending]) return;
+      const trace = []; let j = i;
+      while (parents[j]) { const [p, a] = parents[j]; trace.push(a); j = p; }
+      traces[s.ending] = trace.reverse();
+    });
+    const executed = new Set();
+    states.forEach(s => N.actions(w,s).filter(a => a.type === 'choose').forEach(a => executed.add(a.beat + '/' + a.choice)));
+    const unreachableChoices = w.beats.flatMap(b => b.choices.filter(c => !executed.has(b.id + '/' + c.id)).map(c => b.id + '/' + c.id));
+    return { states: states.length, stranded: states.length - good.size, unreachableChoices, endings: Object.keys(traces).sort(), traces };
+  };
+  N.validate = function (w) {
+    const errors = [], nodes = new Set(w.nodes.map(p => p.id)), actors = new Set(w.npcs.map(n => n.id));
+    const gifts = new Set(w.beats.flatMap(b => b.choices.flatMap(c => c.give)));
+    if (!nodes.has(w.start)) errors.push('start missing');
+    if (nodes.size !== w.nodes.length) errors.push('duplicate place');
+    if (new Set(w.beats.map(b => b.id)).size !== w.beats.length) errors.push('duplicate beat');
+    for (const n of w.nodes) {
+      if (!w.beats.some(b => b.place === n.id && b.id === n.why)) errors.push('place without event: ' + n.id);
+      if (!actors.has(n.owner)) errors.push('owner missing: ' + n.id);
+      if (n.objects.some(o => !o.why)) errors.push('object reason missing');
+    }
+    for (const b of w.beats) {
+      const p = w.nodes.find(p => p.id === b.place);
+      if (!p || !p.objects.some(o => o.kind === b.object)) errors.push('event object missing: ' + b.id);
+      if (!actors.has(b.actor)) errors.push('actor missing');
+      if (!b.choices.length) errors.push('no choice');
+      for (const req of [...b.requires, ...b.choices.flatMap(c => c.needs)]) if (!gifts.has(req)) errors.push('unproducible token: ' + req);
+    }
+    for (const e of w.edges) {
+      if (!nodes.has(e.a) || !nodes.has(e.b)) errors.push('edge endpoint missing');
+      for (const r of e.requires) if (!gifts.has(r)) errors.push('unproducible edge key: ' + r);
+    }
+    for (const r of w.relations) if (!actors.has(r.a) || !actors.has(r.b)) errors.push('relation endpoint missing');
+    if (errors.length) return errors;
+    const result = N.explore(w);
+    if (result.stranded) errors.push('stranded states: ' + result.stranded);
+    if (result.unreachableChoices.length) errors.push('unreachable choices: ' + result.unreachableChoices.join(','));
+    if (!result.endings.length) errors.push('no ending');
+    return errors;
+  };
+  // Labelled feature distance, NOT graph edit distance. Ignores seed, names, prose, facets and IDs.
+  N.features = function (w) {
+    const kind = id => w.nodes.find(n => n.id === id).kind;
+    return [...w.nodes.map(n => 'place:' + n.kind),
+      ...w.edges.map(e => 'edge:' + [kind(e.a), kind(e.b)].sort().join('/') + ':' + e.kind + ':' + e.requires.slice().sort().join(',')),
+      ...w.beats.flatMap(b => b.choices.map(c => 'event:' + kind(b.place) + ':' + c.id + ':' + [...b.requires, ...c.needs].sort().join(',') + '>' + c.give.join(',') + ':' + JSON.stringify(c.effect))),
+      ...w.relations.map(r => 'relation:' + r.kind)].sort();
+  };
+  N.distance = function (a, b) {
+    const A = new Set(N.features(a)), B = new Set(N.features(b));
+    return [...A].filter(x => !B.has(x)).length + [...B].filter(x => !A.has(x)).length;
+  };
+})(IW.IW6);
+
+// ---- src/gen6/weapon.js ----
+(function (N) {
+  N.toolUses = {
+    swing: ['덧칠을 조심스럽게 걷어 낸다','겹쳐 붙은 축제 표식을 갈라 아래의 기록을 드러냈다.',{openness:2}],
+    shield: ['흔적이 지워지지 않게 가린다','바람을 막아 흩어지는 종이의 두 표식을 맞췄다.',{trust:2}],
+    light: ['겹쳐진 흔적에 빛을 비춘다','종이 뒤의 필적이 비쳐 보인다. 보관실로 잇는 표식도 발견했다.',{openness:1}],
+    sound: ['남은 울림을 따라간다','벽 뒤의 빈 공간이 응답했다. 반송 기록과 같은 울림이다.',{trust:1}],
+    dash: ['바람으로 말라붙은 흔적을 턴다','먼지가 걷히고 옛 통로의 표식이 드러났다.',{openness:2}],
+    throw: ['높은 곳의 기록을 내려온다','처마에 걸린 기록을 꺼냈다. 지름길의 잠금 표식이 있다.',{openness:1}],
+    pet: ['작은 동행에게 흔적을 맡긴다','작은 동행이 사람들이 놓친 자국을 찾아 돌아왔다.',{trust:2}],
+    warm: ['굳어 버린 흔적을 녹인다','접착제가 부드러워지고 겹친 두 기록이 상하지 않게 떨어졌다.',{trust:2}]
+  };
+  N.plan = function (traits, seed, free, opts) {
+    opts=opts||{}; free=free||{};
+    const w=N.generate(traits,seed);
+    const interpreted=IW.Weapons.make(free.thing||'',traits,opts.weaponKey||null,free.feel);
+    // Reconstruct from the symbolic key, including unknown-input/feel weapons.
+    // Neither owner nor visitor receives an arbitrary input word in the world text.
+    w.gen=6; w.weapon=IW.Weapons.make('',traits,interpreted.key);
+    w.weapon.from=null;w.weapon.mod=Object.assign({range:1,cd:1},w.weapon.mod||{});
+    w.weapon.how=N.toolUses[w.weapon.verb][0]+' · 기록 가까이에서 X로 사용';
+    w.weapon.use=w.weapon.how;w.weapon.trait=N.toolUses[w.weapon.verb][0];
+    const e=w.beats.find(b=>b.place==='evidence'), use=N.toolUses[w.weapon.verb];
+    e.choices.push({id:'tool-'+w.weapon.verb,label:use[0],give:['proof','shortcut'],effect:use[2],needs:['started'],tool:true});
+    w.name=['남겨진','다시 만나는','안쪽의','아직 열려 있는'][seed%4]+' '+N.places[w.nodes.find(n=>n.id==='evidence').kind].name;
+    w.sentence='비어 있는 가면 걸이에서 시작해, 서로 다른 기록을 따라 주인을 찾아가는 축제.';
+    w.axes={landscape:'alley',time:traits.expr==='open'?'dusk':'night',weather:traits.expr==='later'?'fog':'clear'};
+    w.order=['shake','memory'];
+    w.endings=Object.fromEntries(Object.entries(N.endings).map(([id,line],i)=>[id,{title:['함께 남긴 자리','이름을 남긴 자리','행렬이 지난 뒤'][i],line}]));
+    w.context={wish:traits.wish,fear:traits.fear,joy:traits.joy,cope:traits.cope,dist:traits.dist};
+    const goals={understood:'가면 안쪽에 남은 이름을 확인한다',free:'행렬 밖으로 나갈 문을 연다',safe:'남은 가면이 모두 돌아오기를 기다린다',grow:'지난 축제에서 잘못 적은 기록을 고친다'};
+    w.npcs[0].goal=goals[traits.wish];
+    w.beats[0].text+=' 이음은 '+goals[traits.wish]+'.';
+    return w;
+  };
+  N.describe = w=>({name:w.name,lines:[['세계','가면 축제의 안쪽'],['발단','반납대에 가면 하나가 비어 있다'],['길',w.edges.length+'개의 연결과 '+w.nodes.length+'개의 장소'],['도구',w.weapon.name+' · '+N.toolUses[w.weapon.verb][0]],['기록','답 원문 없이, 세계에서 일어난 일로 서로를 알아갑니다.']]});
+})(IW.IW6);
+
+// ---- src/gen6/dress.js ----
+(function(N){
+  const visuals={'return-rack':'stall','empty-hook':'sign',bell:'beacon','repair-ledger':'sign',mailbox:'mailbox','returned-letter':'mailbox','dye-vat':'barrel','drying-rack':'netrack',barrier:'fence','queue-rope':'bollard',ledger:'mailbox','paired-masks':'stall',curtain:'shelter','mask-stand':'sign',bench:'bench'};
+  N.dress=function(S,w,seed){
+    const L=S.iw6,occupied=new Set(),R=N.random(seed,40),key=(x,y)=>x+','+y;
+    const obj=(k,x,y,why,extra)=>{
+      const o=Object.assign({k,x,y,why},extra||{}),fp=IW.Scene.footprint(o);
+      const service=!/rim|workshop|supplies|garden|waiting|service-light/.test(why);
+      if(service&&(!S.ter[y+1]||S.ter[y+1][x]==='sea'||occupied.has(key(x,y+1))))return false;
+      const approach=[];
+      if(service){const centre=L.centres[why.split(':')[0]];if(centre){let a=x,b=y+1;approach.push([a,b]);while(a!==centre[0]){a+=Math.sign(centre[0]-a);approach.push([a,b]);}while(b!==centre[1]+1){b+=Math.sign(centre[1]+1-b);approach.push([a,b]);}if(approach.some(([a,b])=>occupied.has(key(a,b))||S.ter[b][a]==='sea'))return false;}}
+      if(fp.some(([a,b])=>!S.ter[b]||!S.ter[b][a]||S.ter[b][a]==='sea'||occupied.has(key(a,b))||L.reserved.has(key(a,b))))return false;
+      fp.forEach(([a,b])=>occupied.add(key(a,b)));if(service)approach.forEach(([a,b])=>{L.reserved.add(key(a,b));L.reserved.add(key(a+1,b));});S.objects.push(o);return o;
+    };
+    for(const n of w.nodes){
+      const [x,y]=L.centres[n.id],b=w.beats.find(b=>b.place===n.id);
+      // Service fronts face the clear island centre; supporting objects attach to the work area.
+      const k=visuals[b.object]||'sign';
+      let main;
+      for(const[dx,dy]of [[-3,-3],[2,-3],[-4,1],[3,1],[-2,3],[2,3]]){
+        main=obj(k,x+dx,y+dy,n.id+':'+b.object,k==='fence'?{n:2}:{});if(main)break;
+      }
+      if(!main)throw Error('IW6 required object placement failed: '+n.id);
+      L.targets[n.id]=[main.x,main.y];
+      if(n.id==='evidence')for(let i=0;i<2;i++){
+        let clue;
+        for(const[dx,dy]of [[-4,3],[4,3],[-5,0],[5,1],[-3,4],[3,4]]){clue=obj('sign',x+dx,y+dy,'evidence:trace-'+i);if(clue)break;}
+        if(!clue)throw Error('IW6 clue placement failed');L.clues.push({id:'s6clue'+i,at:[clue.x,clue.y]});
+      }
+      obj('house',x-5,y-5,n.id+':workshop',{w:4,h:2,door:2,roof:S.palette.roofs[seed%S.palette.roofs.length]});
+      if(n.kind==='dye'||n.kind==='court'){obj('crate',x-5,y-2,n.id+':supplies');obj('barrel',x-4,y-2,n.id+':supplies');}
+      if(n.kind==='post'||n.kind==='archive')obj('bench',x+3,y-3,n.id+':waiting');
+      if(n.kind==='garden')obj('flowers',x-5,y+2,n.id+':garden',{w:2,h:2,n:8});
+      obj('lamp',x+5,y-1,n.id+':service-light');
+      for(const [a,b]of L.regions[n.id].cells){
+        if(Math.hypot(a-x,b-y)<5||R()>.16)continue;
+        // Trees grow at the island rim, away from service fronts and reserved routes.
+        if(!L.roads.has(key(a,b))&&![[1,0],[-1,0],[0,1],[0,-1]].some(([dx,dy])=>L.roads.has(key(a+dx,b+dy))))obj(R()<.7?'tree':'flowers',a,b,n.id+':rim');
+      }
+    }
+  };
+})(IW.IW6);
+
+// ---- src/gen6/layout.js ----
+(function (N) {
+  const W=96,H=64;
+  const key=(x,y)=>x+','+y;
+  N.layout=function(S,w,seed,attempt) {
+    const R=N.random(seed,30+attempt), jitter=()=>Math.floor(R()*5)-2;
+    const privacy=w.facets.privacy>=4;
+    const C={entry:[26+jitter(),47+jitter()],evidence:[27+jitter(),16+jitter()],access:[65+jitter(),45+jitter()],final:[83+jitter(),16+jitter()]};
+    if(w.nodes.some(n=>n.id==='memory')) C.memory=privacy?[54+jitter(),11+jitter()]:[9+jitter(),29+jitter()];
+    S.fill('sea');
+    const regions={}, reserved=new Set(), roads=new Set(), paths=[];
+    for(const n of w.nodes) {
+      const [cx,cy]=C[n.id], cells=[];
+      for(let y=cy-7;y<=cy+7;y++) for(let x=cx-8;x<=cx+8;x++) {
+        const angle=Math.atan2(y-cy,x-cx), radius=1+0.08*Math.sin(angle*3+(seed%7));
+        if(((x-cx)/8)**2+((y-cy)/6.8)**2<radius) {S.set(x,y,n.kind==='garden'?'meadow':'grass');cells.push([x,y]);}
+      }
+      regions[n.id]={at:C[n.id],cells};
+      for(let dy=-2;dy<=2;dy++)for(let dx=-2;dx<=2;dx++)reserved.add(key(cx+dx,cy+dy));
+    }
+    // A four-connected staircase raster gives real 2-tile-wide walks, never diagonal movement.
+    for(const e of w.edges) {
+      const a=C[e.a],b=C[e.b],cells=new Map();let [x,y]=a;
+      const push=()=>{for(const [dx,dy]of [[0,0],[1,0],[0,1],[1,1]]){const k=key(x+dx,y+dy);cells.set(k,[x+dx,y+dy]);roads.add(k);reserved.add(k);S.set(x+dx,y+dy,'boards');}};
+      push();
+      while(x!==b[0]||y!==b[1]) {
+        const tx=Math.abs(b[0]-a[0]),ty=Math.abs(b[1]-a[1]);
+        if(x!==b[0]&&(y===b[1]||Math.abs(x-a[0])/(tx||1)<=Math.abs(y-a[1])/(ty||1)))x+=Math.sign(b[0]-x);else y+=Math.sign(b[1]-y);
+        push();
+      }
+      const list=[...cells.values()], mid=list[Math.floor(list.length/2)];
+      // Block a whole band, including both corridor lanes, to prevent corner bypass.
+      const gate=e.requires.length?list.filter(([x,y])=>Math.abs(x-mid[0])+Math.abs(y-mid[1])<=3):[];
+      paths.push({edge:e,cells:list,gate,mid});
+    }
+    const last=C.final;
+    const anchors={};for(const id of ['start','comp','meet','cross','shake','memory','view','wild']){const p=id==='start'?C.entry:C.evidence;anchors[id]={x:p[0],y:p[1]+2};}
+    anchors.land={x:last[0],y:last[1]-5};
+    const out={ter:S.ter,elev:S.elev,palette:IW.SceneCompose.mixPal('alley',seed),objects:[],places:w.nodes.map(n=>({id:n.id,name:N.places[n.kind].name,line:n.purpose,area:[[C[n.id][0]-6,C[n.id][1]-5,C[n.id][0]+6,C[n.id][1]+5]]})),anchors,frags:[],signs:[],secret:null,landmark:'clocktower',meta:{iw6:true,attempt}};
+    out.iw6={centres:C,regions,reserved,roads,paths,targets:{},clues:[]};
+    N.dress(out,w,seed);
+    return out;
+  };
+  IW.SceneDefs.iw6_dynamic={w:W,h:H,landscape:'alley',build(S,w,seed,o){const result=N.layout(S,w,seed,o.attempt);N.lastLayout=result.iw6;return result;}};
+})(IW.IW6);
+
+// ---- src/gen6/build.js ----
+(function(N){
+  const key=(x,y)=>x+','+y;
+  N.applyGates=function(map,state){
+    const X=map.iw6;
+    for(const p of X.layout.paths)for(const[x,y]of p.gate){
+      const open=p.edge.requires.every(f=>state.flags.includes(f));
+      const row=map.rows[y];map.rows[y]=row.slice(0,x)+(open?X.base[y][x]:'W')+row.slice(x+1);
+    }
+  };
+  N.tileCheck=function(map){
+    const errors=[],X=map.iw6,all={flags:['started','proof','pass','promise','shortcut','finished']};
+    const reach=()=>IW.Collision.reachable(map,[],map.start.x,map.start.y);
+    N.applyGates(map,all);const r=reach();
+    for(const[id,at]of Object.entries(X.layout.centres))if(!r.tileReached(at[0],at[1]+2))errors.push('unreachable place '+id);
+    for(const[id,at]of Object.entries(X.layout.targets))if(!r.tileReached(at[0],at[1]+1))errors.push('blocked service front '+id);
+    for(const c of X.layout.clues)if(!r.tileReached(c.at[0],c.at[1]+1))errors.push('blocked clue '+c.id);
+    for(const o of map.sceneData.objs)if(!o.why)errors.push('unexplained object');
+    N.applyGates(map,N.initial(X.spec));
+    const closed=reach(),p=X.layout.centres.final;
+    if(closed.tileReached(p[0],p[1]+2))errors.push('final gate bypass');
+    for(const path of X.layout.paths)if(path.edge.kind==='shortcut'){
+      // The shortcut must be visibly gated; final access alone is insufficient evidence.
+      if(!path.gate.length)errors.push('shortcut missing gate');
+    }
+    return errors;
+  };
+  N.build=function(spec,seed){
+    const graphErrors=N.validate(spec);if(graphErrors.length)throw Error(graphErrors.join(';'));
+    let lastErrors=[];
+    for(let attempt=0;attempt<8;attempt++){
+      let map;try{map=IW.Scene.make('iw6_dynamic',spec,seed,attempt);}catch(e){if(attempt===7)throw e;continue;}
+      map.plan=null;map.name=spec.name;map.skill=IW.Skills.FROM_VERB[spec.weapon.verb];
+      map.iw6={spec,layout:N.lastLayout,base:map.rows.slice()};
+      map.spots=Object.entries(map.iw6.layout.targets).map(([id,at])=>({id:'s6event-'+id,tiles:[at],obj:true}));
+      map.spots.push(...map.iw6.layout.clues.map(c=>({id:c.id,tiles:[c.at],obj:true,discover:true})));
+      lastErrors=N.tileCheck(map);if(!lastErrors.length)return{map,story:{intro:[],objectives:{},spot:()=>null,discoverTotal:spec.nodes.length+2}};
+    }
+    throw Error('IW6 map validation failed: '+lastErrors.join(';'));
+  };
+})(IW.IW6);
+
+// ---- src/game/story6.js ----
+(function(g){
+  const IW=g.IW,N=IW.IW6,T=16;
+  const names={maker:'이음',keeper:'서온',witness:'단'};
+  const px=p=>({x:p[0]*T+8,y:p[1]*T+12});
+  const state=w=>w.flags.iw6;
+  const spec=w=>w.map.iw6.spec;
+  const ev=(w,e)=>w.events.push(e);
+  function refresh(w){
+    N.applyGates(w.map,state(w));
+    for(const n of w.npcs){
+      const home=spec(w).npcs.find(q=>q.id===n.id).home;
+      let destination=home;
+      if(state(w).flags.includes('promise')&&n.id==='maker')destination='access';
+      if(state(w).flags.includes('pass')&&n.id==='keeper')destination='final';
+      const c=w.map.iw6.layout.centres[destination],target=px([c[0]+2,c[1]+1]);
+      if(n.destination!==destination){
+        n.destination=destination;
+        n.path=IW.Tale.path(w.map,{x:Math.floor(n.x/T),y:Math.floor((n.y-1)/T)},{x:Math.floor(target.x/T),y:Math.floor((target.y-1)/T)});
+      }
+    }
+  }
+  function setup(w){
+    w.inner=false;w.s4=null;w.tale=null;w.s6={lastPlace:null};w.flags.hasBookmark=true;
+    if(!w.flags.iw6)w.flags.iw6=N.initial(spec(w));
+    w.weapon=spec(w).weapon;w.skill=w.map.skill;
+    w.npcs=spec(w).npcs.map((n,i)=>{
+      const c=w.map.iw6.layout.centres[n.home],p=px([c[0]+2,c[1]+1]);
+      return{id:n.id,name:names[n.id],kind:'gen',x:p.x,y:p.y,dir:'down',soft:true,lookCode:10+i*33,destination:n.home};
+    });
+    refresh(w);
+    if(state(w).ending&&w.flags.finished)ev(w,{type:'complete'});
+  }
+  function say(w,text,cb){IW.Game.say(w,[[null,text]],cb);}
+  function begin(w){say(w,'축제 마지막 날, 반납대에 가면 하나가 비어 있다. 이음이 빈 걸이를 바라보고 있다.\n이동: 방향키 · 살펴보기: Z/Space · 도구: X');}
+  function complete(w){
+    const s=state(w);w.flags.ending=s.ending;w.flags.finished=true;w.flags.landmarkOn=true;w.finishedAt=w.playTime;
+    say(w,N.endings[s.ending],()=>{ev(w,{type:'ending',id:s.ending});ev(w,{type:'complete'});});
+  }
+  function chooseAction(w,action,tool){
+    w.flags.iw6=N.step(spec(w),state(w),action);
+    ev(w,{type:'choice'});ev(w,{type:'objective',key:'iw6'});refresh(w);
+    if(state(w).ending)return complete(w);
+    const lines={arrival:'빈 걸이 안쪽에 같은 축제 표식이 남아 있다. 기록이 있는 곳부터 살펴보자.',passage:'서온이 통행 줄을 걷는다. 마지막 장소로 가는 문이 열렸다.','old-promise':'이음이 기록을 읽고 서온을 만나러 간다. 보관실의 귀환 통로도 열렸다.'};
+    say(w,tool?N.toolUses[w.weapon.verb][1]:(lines[action.beat]||'두 기록이 하나의 가면을 가리킨다. 문지기에게 보여 줄 수 있겠다.'));
+  }
+  function visit(w,id){
+    const s=state(w);if(s.at===id)return;
+    const move={type:'move',to:id};
+    if(N.actions(spec(w),s).some(a=>a.type==='move'&&a.to===id))w.flags.iw6=N.step(spec(w),s,move);
+  }
+  function event(w,id){
+    if(w.flags.finished)return say(w,'축제는 끝났지만 이곳에 남긴 기록은 그대로다. 다른 길도 둘러볼 수 있다.');
+    const s=state(w),b=spec(w).beats.find(b=>b.place===id);
+    if(s.at!==id)return true;
+    if(s.done.includes(b.id)){say(w,id==='evidence'?'표식은 이미 확인했다. 서온에게 기록을 가져가자.':'이곳에서 한 일은 기록에 남아 있다.');return true;}
+    let actions=N.actions(spec(w),s).filter(a=>a.type==='choose'&&a.beat===b.id);
+    actions=actions.filter(a=>!b.choices.find(c=>c.id===a.choice).tool);
+    if(id==='evidence'&&!(w.flags.s6clue0&&w.flags.s6clue1))return say(w,'기록의 앞뒤가 맞지 않는다. 작업장 양쪽의 작은 표식을 살펴보자. X로 도구를 써서 확인하는 길도 있다.');
+    if(!actions.length)return say(w,b.requires.includes('proof')?'먼저 서로 다른 두 흔적이 같은 가면인지 확인해야 한다.':'빈 걸이에서 시작된 일을 먼저 들어 보자.');
+    say(w,b.text,()=>{
+      w.choice={who:names[b.actor],q:id==='final'?'이 가면을 반납대에 남길까?':N.places[spec(w).nodes.find(n=>n.id===id).kind].name,
+        sel:0,lastY:0,options:actions.map(a=>({label:b.choices.find(c=>c.id===a.choice).label})),pick(i){
+          const a=actions[i];if(!a)return;w.choice=null;chooseAction(w,a,false);
+        }};
+    });return true;
+  }
+  function spot(w,id){
+    if(id==='s6clue0'||id==='s6clue1'){
+      w.flags[id]=true;w.found.gen.add(id);ev(w,{type:'found',count:w.found.gen.size,total:w.story.discoverTotal});
+      const e=spec(w).nodes.find(n=>n.id==='evidence').kind;
+      const clues={bell:['종 장부에는 마지막 울림이 행렬 출발보다 이르다고 적혀 있다.','가면의 표식에는 행렬이 끝난 시각이 새겨져 있다. 누군가 기록을 바꿨다.'],post:['반송 봉투의 받는 사람은 지워졌지만 안쪽에 두 번 접은 자국이 있다.','가면 안쪽의 접힌 종이에도 같은 두 줄이 있다. 초대장은 주인에게 닿지 않았다.'],dye:['겉면의 붉은 염료 아래 푸른 실이 남아 있다.','건조대 기록의 푸른 실은 이음과 서온이 함께 만든 가면에만 쓰였다.']};
+      say(w,clues[e][id==='s6clue0'?0:1]);return true;
+    }
+    if(id.startsWith('s6event-'))return event(w,id.slice(8));return true;
+  }
+  function talk(w,n){
+    const s=state(w),b=spec(w).beats.find(b=>b.place===s.at&&b.actor===n.id&&!s.done.includes(b.id));
+    if(b)return event(w,b.place);
+    const rel=spec(w).relations[0].kind;
+    const texts={maker:s.flags.includes('promise')?'이 약속을 잊은 건 나만이 아니었겠지. 이번에는 내가 먼저 가 볼게.':'돌아오는 가면을 하나씩 고쳐 줬어. 그런데 마지막 하나가 아직 오지 않았어.',
+      keeper:s.flags.includes('pass')?'문은 열어 둘게. 어떤 방식으로 돌려줄지는 네가 정해.':rel==='care'?'이음이 만든 가면이라면 내가 알아볼 수 있어. 확인할 흔적이 필요해.':'이음에게 갚지 못한 일이 있어. 하지만 지금은 행렬을 먼저 보내야 해.',
+      witness:s.flags.includes('proof')?'표식이 같다는 것과 주인이 같은 건 다른 말일 수도 있어. 마지막 이야기를 들어 줘.':'기록이 서로 맞지 않아. 양쪽 표식을 보거나 도구로 겹친 흔적을 확인해 봐.'};
+    say(w,texts[n.id]||'행렬이 지나가기를 기다린다.');
+  }
+  function tool(w){
+    const s=state(w),p=w.map.iw6.layout.targets.evidence,q=px(p);
+    const range={swing:30,shield:36,light:56,sound:80,dash:50,throw:96,pet:112,warm:36}[w.weapon.verb];
+    if(Math.hypot(w.player.x-q.x,w.player.y-q.y)>range||!w.map.lineClear(w.player.x,w.player.y-7,q.x,q.y+8))return;
+    const a=N.actions(spec(w),s).find(a=>a.type==='choose'&&a.choice==='tool-'+w.weapon.verb);
+    if(!a)return;
+    const [dx,dy]=IW.Interact.DIRS[w.player.dir];
+    if(['swing','shield','throw','dash'].includes(w.weapon.verb)&&((q.x-w.player.x)*dx+(q.y-w.player.y)*dy)<0)return;
+    if(['throw','pet','dash'].includes(w.weapon.verb)){
+      w.s6.pendingTool={action:a,target:q,until:w.t+2};
+      if(w.petE){w.petE.tx=q.x;w.petE.ty=q.y+8;}
+    }else chooseAction(w,a,true);
+  }
+  function update(w,dt){
+    const X=w.map.iw6,p=w.player,s=state(w);
+    if(w.s6.pendingTool){
+      const task=w.s6.pendingTool,q=task.target,actor=w.weapon.verb==='throw'?w.proj:w.weapon.verb==='pet'?w.petE:p;
+      if(actor&&Math.hypot(actor.x-q.x,actor.y-q.y)<27){w.s6.pendingTool=null;chooseAction(w,task.action,true);}
+      else if(w.t>task.until)w.s6.pendingTool=null;
+    }
+    for(const[id,r]of Object.entries(X.layout.regions))if(r.cells.some(([x,y])=>x===Math.floor(p.x/T)&&y===Math.floor((p.y-3)/T))){
+      visit(w,id);if(!w.found.gen.has(id)){w.found.gen.add(id);ev(w,{type:'found',count:w.found.gen.size,total:w.story.discoverTotal});}
+      break;
+    }
+    for(const n of w.npcs){
+      if(n.id==='maker'&&spec(w).context.joy==='together'&&state(w).flags.includes('started')&&!state(w).flags.includes('promise')&&!w.flags.finished){
+        n.repath=(n.repath||0)-dt;
+        if(n.repath<=0&&Math.hypot(n.x-p.x,n.y-p.y)>40){
+          n.repath=1.2;n.path=IW.Tale.path(w.map,{x:Math.floor(n.x/T),y:Math.floor((n.y-1)/T)},{x:Math.floor(p.x/T),y:Math.floor((p.y-1)/T)});
+          if(n.path&&n.path.length>2)n.path=n.path.slice(0,-2);
+        }
+      }
+      n.walking=false;if(!n.path||!n.path.length)continue;
+      const q=n.path[0],before={x:n.x,y:n.y};IW.Collision.step4(n,q.x,q.y,38*dt);
+      if(n.x===q.x&&n.y===q.y)n.path.shift();
+      const dx=n.x-before.x,dy=n.y-before.y;n.walking=!!(dx||dy);n.dir=dx?(dx>0?'right':'left'):dy?(dy>0?'down':'up'):n.dir;n.dist=(n.dist||0)+Math.abs(dx)+Math.abs(dy);n.frame=1+Math.floor(n.dist/6)%3;
+    }
+    IW.Scene.tick(w);
+    const objective=objectiveText(w);if(w.s6.objective!==objective){w.s6.objective=objective;ev(w,{type:'hud'});}
+  }
+  function objectiveText(w){const s=state(w),sp=spec(w);if(s.ending)return'이 세계에 남긴 기록을 친구와 나눠 보세요';if(!s.flags.includes('started'))return'축제 문 · 이음과 빈 가면 걸이를 살펴보기';if(!s.flags.includes('promise')&&(sp.context.wish==='grow'||(s.flags.includes('proof')&&sp.context.fear==='loss')))return'지난 축제 기록실 · 두 사람이 함께 만든 기록을 확인하기';if(!s.flags.includes('proof'))return N.places[sp.nodes.find(n=>n.id==='evidence').kind].name+' · 양쪽 흔적을 조사하거나 X로 도구 사용';if(!s.flags.includes('pass'))return N.places[sp.nodes.find(n=>n.id==='access').kind].name+' · 서온과 통행을 협의하기';if(sp.context.fear==='stuck'&&!s.flags.includes('shortcut'))return'지난 축제 기록실 · 닫힌 통로의 표식을 찾기';return N.places[sp.nodes.find(n=>n.id==='final').kind].name+' · 가면을 어디에 남길지 결정하기';}
+  function drawOver(c,w,t){
+    for(const path of w.map.iw6.layout.paths){if(!path.gate.length||path.edge.requires.every(f=>state(w).flags.includes(f)))continue;
+      for(const[x,y]of path.gate){c.fillStyle='#493847';c.fillRect(x*T,y*T,16,16);c.fillStyle='#d6b36b';c.fillRect(x*T+2,y*T+5,12,3);}
+    }
+    for(const[id,p]of Object.entries(w.map.iw6.layout.targets)){const b=spec(w).beats.find(b=>b.place===id);if(state(w).done.includes(b.id))continue;c.fillStyle='#f3d36b';c.fillRect(p[0]*T+6,p[1]*T-17+Math.sin(t*3),4,4);}
+  }
+  IW.Story6={setup,begin,update,talk,spot,tool,objectiveText,drawOver,event};
+})(globalThis);
+
 // ---- src/render/art.js ----
 /* 픽셀 아트 — 모든 그림은 코드로 16px 격자 위에 그린다.
    규칙: 한 팔레트, 1px 잉크 윤곽(#1d1822), 빛은 위·왼쪽에서, 3/4 탑다운 시점. */
@@ -14161,6 +14695,7 @@ body.touch .pad {
     for (const b of world.shots) A.drawShot(c, b, t);
     if (world.inner) IW.Acts.drawOver(c, world, t, snap);
     if (world.s4 && IW.Story4) IW.Story4.drawOver(c, world, t, snap);
+    if (world.s6 && IW.Story6) IW.Story6.drawOver(c, world, t, snap);
 
     // 밤: 전체를 살짝 푸르게 가라앉히고, 등불만 따뜻하게 (만든 이의 답: 모두 잠든 밤)
     const vx0 = ox / k - 2, vy0 = oy / k - 2, vw0 = W / k + 4, vh0 = H / k + 4;
@@ -14733,6 +15268,7 @@ body.touch .pad {
     if (w.map.plan) IW.Acts.setup(w);
     if (w.map.tale) { w.tale = w.map.tale; IW.Tale.setup(w); }
     if (w.map.iw4 && IW.Story4) IW.Story4.setup(w); // IW4: 엔진 대본 진행기 // 내면 세계: 인물·그림자·조사할 것을 진행 상태에 맞춰 세운다
+    if (w.map.iw6 && IW.Story6) IW.Story6.setup(w);
     IW.Render.prepare(w);
   }
 
@@ -14752,6 +15288,7 @@ body.touch .pad {
   }
 
   function objectiveText(w) {
+    if (w.s6) return IW.Story6.objectiveText(w);
     if (w.s4) return IW.Story4.objectiveText(w);
     if (w.inner) return IW.Acts.objectiveText(w);
     if (w.tale) return IW.Tale.objectiveText(w);
@@ -14767,6 +15304,7 @@ body.touch .pad {
     if (w.started) return;
     w.started = true;
     w.visited[w.mapId] = true;
+    if (w.s6) { IW.Story6.begin(w); return; }
     if (w.s4) { IW.Story4.begin(w); return; }
     if (w.inner) { IW.Acts.begin(w); return; }
     if (w.tale) { IW.Tale.begin(w); return; }
@@ -14803,6 +15341,7 @@ body.touch .pad {
 
   // ---------- 대화와 조사 ----------
   function talk(w, n) {
+    if (w.s6) { IW.Story6.talk(w,n); return; }
     const f = w.flags, p = w.player;
     if (w.s4) { IW.Story4.talk(w, n); return; }
     if (w.inner && IW.Acts.talk(w, n)) return;
@@ -14856,6 +15395,7 @@ body.touch .pad {
     if (!tg) return;
     if (tg.kind === 'npc') return talk(w, tg.npc);
     if (tg.kind === 'shade') return IW.Acts.listen(w, tg.e);
+    if (w.s6) { IW.Story6.spot(w,tg.id); return; }
     if (w.s4 && IW.Story4.spot(w, tg.id)) return;
     if (w.inner && IW.Acts.spot(w, tg.id)) return;
     if (w.tale) { IW.Tale.spot(w, tg.id); return; }
@@ -14917,6 +15457,7 @@ body.touch .pad {
 
   function useShield(w) {
     if (!IW.Skills.use(w)) return;
+    if (w.s6) { IW.Story6.tool(w); return; }
     const s = Combat.deviceInFront(w);
     const f = w.flags;
     if (!s || f[s.device]) return;
@@ -15050,12 +15591,18 @@ body.touch .pad {
     w.playTime += dt;
 
     // 바람 걸음: 돌진하는 동안은 입력 대신 돌진으로 움직인다
+    const dashStart=w.s6&&w.dash?{x:p.x,y:p.y,dx:w.dash.dx,dy:w.dash.dy}:null;
     IW.Skills.update(w, dt);
+    if(dashStart){
+      if(dashStart.dx)p.y=dashStart.y;else p.x=dashStart.x;
+      if(Collision.blocked(w.map,w.npcs,p.x,p.y)){p.x=dashStart.x;p.y=dashStart.y;}
+    }
     if (w.dash) {
       p.walking = false; p.frame = 2;
       Combat.update(w, dt);
       if (w.inner) IW.Acts.update(w, dt);
       if (w.s4) IW.Story4.update(w, dt);
+      if (w.s6) IW.Story6.update(w, dt);
       if (w.hp <= 0) { if (w.inner) IW.Acts.faint(w); else if (w.s4) IW.Story4.faint(w); else respawn(w); }
       return;
     }
@@ -15135,6 +15682,7 @@ body.touch .pad {
     if (w.inner) IW.Acts.update(w, dt);
     if (w.tale) IW.Tale.update(w, dt);
     if (w.s4) IW.Story4.update(w, dt);
+    if (w.s6) IW.Story6.update(w, dt);
     if (w.inner && IW.Scene) IW.Scene.tick(w);
     if (countDev() !== devBefore) afterDevice(w);
     if (w.hp <= 0) { if (w.inner) IW.Acts.faint(w); else if (w.s4) IW.Story4.faint(w); else respawn(w); return; }
@@ -15530,7 +16078,7 @@ body.touch .pad {
     const st = Q.steps(state.seed, state.answers).map((s) => ({ kind: 'choice', ...s }));
     const all = st.length === 10 && Q.complete(state.answers);
     const regret = state.answers[7] != null ? Q.MAIN[7].o[state.answers[7]][0] : null;
-    const frees = Q.FREE.filter((f) => !f.when || (regret ? f.when({ regret }) : true));
+    const frees = Q.FREE.filter((f) => (GV!==6 || f.id==='thing') && (!f.when || (regret ? f.when({ regret }) : true)));
     for (const f of frees) {
       st.push({ kind: 'free', ...f });
       // 좋아하는 것이 사전에 없거나 작품 이름만 알아들었으면: 어떤 점이 좋은지 한 번 더 (아는 척하지 않는다)
@@ -15618,7 +16166,7 @@ body.touch .pad {
     // 공개 범위
     $('qCat').textContent = '공개 범위';
     $('qText').textContent = '친구가 이 세계를 열었을 때, 무엇을 보여 줄까요?';
-    const items = Q.SHARE_ITEMS.filter((it) => it.id === 'notes' || state.free[it.id]);
+    const items = Q.SHARE_ITEMS.filter((it) => it.id === 'notes' || (GV!==6 && state.free[it.id]));
     for (const it of items) {
       const b = document.createElement('button');
       b.type = 'button'; b.className = 'opt opt-toggle';
@@ -15671,7 +16219,7 @@ body.touch .pad {
     state.i++; render(true);
   }
 
-  const GV = 3; // 새로 만드는 세계의 생성기 판
+  const GV = 6; // 새 세계만 IW6. 저장된 IW2~IW5는 자기 판을 유지한다.
   function shareCode(seed, answers, free, share, diff, gv) {
     const t = Q.traits(answers);
     const wp = IW.Weapons.make(free.thing || '', t, null, free.feel);
@@ -15705,8 +16253,8 @@ body.touch .pad {
     const t = Q.traits(saved.answers);
     const viewFree = visitor ? (saved.pub || {}) : (saved.free || {});
     // 예전에 만든 세계(gv 없음)는 예전 생성기 그대로. 새로 만든 세계는 장면 조립기(3). IW4는 따로
-    const gv = saved.gv === 5 ? 5 : saved.gv === 4 ? 4 : saved.gv === 3 ? 3 : 2;
-    const d = gv >= 4 ? IW.IW4.describe(IW.IW4.plan(t, saved.seed, viewFree, { owner: !visitor, rev: gv === 5 ? 2 : 1 }), !visitor)
+    const gv = saved.gv === 6 ? 6 : saved.gv === 5 ? 5 : saved.gv === 4 ? 4 : saved.gv === 3 ? 3 : 2;
+    const d = gv === 6 ? IW.IW6.describe(IW.IW6.plan(t,saved.seed,viewFree,{weaponKey:visitor?(saved.pub||{}).w:null})) : gv >= 4 ? IW.IW4.describe(IW.IW4.plan(t, saved.seed, viewFree, { owner: !visitor, rev: gv === 5 ? 2 : 1 }), !visitor)
       : IW.InnerPlan.describe(IW.InnerPlan.plan(t, saved.seed, viewFree, { weaponKey: visitor ? (saved.pub || {}).w : null }), !visitor);
     const code = visitor ? saved.id : shareCode(saved.seed, saved.answers, saved.free || {}, saved.share || {}, saved.diff, gv).code;
     current = { v: 2, gv, lab: !!saved.lab, share: saved.share || {}, id: code, core: Q.coreOf(code), seed: saved.seed, answers: saved.answers, free: visitor ? null : (saved.free || {}), pub: saved.pub || null, notes: visitor ? saved.notes !== false : true, visitor: !!visitor, diff: visitor ? IW.Difficulty.fromCode((saved.pub || {}).d) : (saved.diff || 'normal'), baseDiff: visitor ? IW.Difficulty.fromCode((saved.pub || {}).d) : (saved.diff || 'normal') };
@@ -15818,7 +16366,7 @@ body.touch .pad {
   }
   function openLabWorld(engine, o, seed, gv) {
     const answers = labAnswers(engine, o), sd = (seed >>> 0) || 1;
-    showBlueprint2({ v: 2, gv: gv === 4 ? 4 : 5, lab: true, seed: sd, answers, free: {}, share: {} }, false);
+    showBlueprint2({ v: 2, gv: gv === 6 ? 6 : gv === 4 ? 4 : 5, lab: true, seed: sd, answers, free: {}, share: {} }, false);
     $('bpKicker').textContent = 'IW4 시제품'; $('bpAgain').textContent = '처음부터 다시 답하기';
     show('bp');
   }
@@ -15835,7 +16383,7 @@ body.touch .pad {
     sel('engine', '중심 갈등 (소망 × 두려움)', [['masks', '알아봐 주길 × 미움받기 싫음 → 가면 축제 도시'], ['isles', '무사하길 × 멀어짐 → 흩어지는 섬들']]);
     for (const [k, label] of LAB_Q) sel(k, label, Q.MAIN.find((m) => m.key === k).o.map((x) => [x[0], x[1]]));
     sel('cope', '불안 더 묻기 (마지막 밤의 압박)', [['0', '더 잘하려 애씀'], ['1', '곱씹음'], ['2', '아무렇지 않은 척'], ['3', '거리를 둠']]);
-    sel('gv', '배치 규칙 (같은 답·시드로 비교)', [['5', '2판: 장소에 맞춘 배치 (IW5 코드)'], ['4', '1판: 처음 시제품 (IW4 코드)']]);
+    sel('gv', '세계 버전 (같은 답·시드로 비교)', [['6','IW6: 이야기와 장소를 잇는 가면 축제'], ['5', '2판: 장소에 맞춘 배치 (IW5 코드)'], ['4', '1판: 처음 시제품 (IW4 코드)']]);
     const sd = document.createElement('label'); sd.className = 'lab-row'; sd.innerHTML = '<span>시드 (같은 답, 다른 배치)</span><input name="seed" type="number" min="1" value="4242">'; form.appendChild(sd);
     const go = document.createElement('button'); go.type = 'submit'; go.className = 'mi'; go.textContent = '이 답으로 세계 열기'; form.appendChild(go);
     form.onsubmit = (e) => { e.preventDefault(); const fd = new FormData(form); const o = {}; for (const [k] of LAB_Q) o[k] = fd.get(k); o.cope = fd.get('cope'); openLabWorld(fd.get('engine'), o, +fd.get('seed'), +fd.get('gv')); };
@@ -16027,11 +16575,12 @@ body.touch .pad {
   // IW4: 답이 이야기의 모양을 정하는 세계 (IW2·IW3와 따로)
   function iw4PlanOf(cur) {
     const free = cur.visitor ? (cur.pub || {}) : (cur.free || {});
+    if(cur.gv===6)return IW.IW6.plan(IW.Inner.traits(cur.answers),cur.seed,free,{weaponKey:cur.visitor?(cur.pub||{}).w:null});
     return IW.IW4.plan(IW.Inner.traits(cur.answers), cur.seed, free, { owner: !cur.visitor, weaponKey: cur.visitor ? (cur.pub || {}).w : null, rev: cur.gv === 5 ? 2 : 1 });
   }
   function enterInner(cur) {
     let built;
-    try { built = cur.gv >= 4 ? IW.IW4.build(iw4PlanOf(cur), cur.seed) : IW.InnerPlan.build(innerPlanOf(cur), cur.seed); } catch (err) { console.error(err); toast('세계를 만들지 못했어요. 다시 시도해 주세요.'); return; }
+    try { built = cur.gv === 6 ? IW.IW6.build(iw4PlanOf(cur),cur.seed) : cur.gv >= 4 ? IW.IW4.build(iw4PlanOf(cur), cur.seed) : IW.InnerPlan.build(innerPlanOf(cur), cur.seed); } catch (err) { console.error(err); toast('세계를 만들지 못했어요. 다시 시도해 주세요.'); return; }
     IW.MAPS.gen = built.map;
     IW.STORY.gen = built.story;
     const core = IW.Inner.coreOf(cur.id), diff = IW.Difficulty.LEVELS[cur.diff] ? cur.diff : 'normal';
@@ -16365,6 +16914,7 @@ body.touch .pad {
 
   const COMPLETE_DEFAULT = { kicker: '제작자의 세계', title: '현관과 광장을 복원했다', quote: ['언젠가 이룰 꿈은, 아직 펼치지 않은 다음 장이다.', '고요한 자리에도 누군가의 목소리가 머문다.', '그리고 이야기는 아직 계속된다.'], fine: '온기의 방은 아직 준비 중이에요. 리오가 원고를 들고 기다립니다.', stay: '광장 더 둘러보기' };
   function showComplete() {
+    if(game.s6)return showCompleteIW6();
     if (game.s4) return showCompleteIW4();
     if (game.inner) return showCompleteInner();
     if (game.tale) return showCompleteTale();
@@ -16423,6 +16973,21 @@ body.touch .pad {
   function replayTale() { try { localStorage.removeItem('innerworld.gen.' + TALE_ID); } catch (_) {} game = official = null; enterTale(); }
 
   // IW4 결말 화면: 이 세계에서 일어난 일(진단이 아니라 사건), 결말 세 갈래, 주인의 결말 비교(주인이 허락했을 때만)
+  function showCompleteIW6(){
+    const sp=game.map.iw6.spec,e=sp.endings[game.flags.ending],seen=seenEndings(game.worldId.split('.')[0]),cur=game.cur||{};
+    document.querySelector('#complete .win-kicker').textContent=sp.name;
+    $('cTitle').textContent=e.title;document.querySelector('#complete .quote').textContent=e.line;
+    $('cTime').textContent=fmtTime(game.finishedAt||game.playTime);$('cFound').textContent=game.found.gen.size+' / '+game.story.discoverTotal;
+    $('cParryLabel').textContent='본 결말';$('cParry').textContent=seen.length+' / 3';$('cNote').previousElementSibling.textContent='사용한 도구';$('cNote').textContent=sp.weapon.name;
+    $('cEnds').replaceChildren();for(const[id,end]of Object.entries(sp.endings)){const li=document.createElement('li');li.textContent=seen.includes(id)?end.title:'아직 모르는 결말';$('cEnds').append(li);}
+    $('cSaidWrap').hidden=true;$('cNotesWrap').hidden=false;document.querySelector('#cNotesWrap .c-sub').textContent='이 세계에서 있었던 일';document.querySelector('#cNotesWrap .fine').textContent='정답으로 정해진 해석은 없어요. 어떤 장면이 마음에 남았나요?';
+    $('cNotes').replaceChildren();for(const text of [sp.weapon.name+'을 들고 서로 다른 기록을 확인했다.',game.flags.iw6.flags.includes('promise')?'오래된 약속을 찾아 이음과 서온을 다시 이었다.':'오래된 기록실에는 아직 읽지 않은 이야기가 남아 있다.']){const li=document.createElement('li');li.textContent=text;$('cNotes').append(li);}
+    $('cCompare').hidden=true;$('cOwnEnd').hidden=!!cur.visitor;
+    if(cur.visitor&&cur.pub&&sp.endings[cur.pub.e]){$('cCompare').hidden=false;$('cCompare').textContent='세계 주인은 '+sp.endings[cur.pub.e].title+'에 닿았어요. 나는 '+e.title+'.';}
+    if(!cur.visitor){const box=$('cOwnEndBox');box.checked=!!(cur.share&&cur.share.e===game.flags.ending);box.onchange=()=>IW.Quiz.setShareEnding(box.checked?game.flags.ending:null);}
+    document.querySelector('#complete > .win > .fine').textContent='친구는 어떤 기록을 믿었을까요? 같은 세계에서 다른 선택을 해 보세요.';
+    $('btnStay').textContent='이 세계 더 둘러보기';$('cInner').hidden=false;$('btnReplay').hidden=false;$('complete').hidden=false;$('btnStay').focus({preventScroll:true});updateTitleButtons();
+  }
   function showCompleteIW4() {
     const f = game.flags, X = game.map.iw4, sp = X.spec, E = IW.IW4.ENGINES[sp.engine], e = sp.endings[f.ending];
     const core = game.worldId.split('.')[0], seen = seenEndings(core), cur = game.cur || {};
@@ -16551,7 +17116,7 @@ body.touch .pad {
     return cv.toDataURL('image/png');
   }
   function makeShareCardIW4(cur) {
-    const sp = iw4PlanOf(cur), { map } = IW.IW4.build(sp, cur.seed);
+    const sp = iw4PlanOf(cur), { map } = cur.gv===6?IW.IW6.build(sp,cur.seed):IW.IW4.build(sp, cur.seed);
     const core = IW.Inner.coreOf(cur.id), sv = loadGenSave(core), seen = seenEndings(core);
     const W = 1080, H = 1350, cv = IW.Art.canvas(W, H), c = cv.getContext('2d');
     c.fillStyle = '#17151e'; c.fillRect(0, 0, W, H);
