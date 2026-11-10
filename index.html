@@ -9843,6 +9843,601 @@ body.touch .pad {
   IW.Atlas = { C, WALKED, PINS, classOf, zoneOf, reveal, arrival, state, step, met, togglePin, stats, save, clear, load, pack, unpack, draw, viewOf, keyOf };
 })(globalThis);
 
+// ---- src/gen6/data6.js ----
+/* IW6 재료 — 사람이 쓴 작은 부품들. 줄거리는 없다. 생성기(world6.js)가 조건에 맞춰 잇는다.
+   규칙: 여기 어디에도 플레이어(세계 주인)를 설명하는 말을 쓰지 않는다. 세계에서 일어나는 일만 적는다. */
+(function (g) {
+  const IW = (g.IW = g.IW || {});
+
+  // 결(세계의 성질). 0~7로 뭉갠 값. say: [낮을 때, 높을 때] — 세계에서 벌어지는 일로만 적는다
+  const FACETS = {
+    gap: ['집들이 어깨를 맞대고 붙어 있다', '집과 집 사이가 멀다'],
+    talk: ['사람들이 생각나는 대로 말한다', '중요한 말일수록 입 밖에 잘 내지 않는다'],
+    back: ['보이는 곳이 전부다', '환한 곳 바로 뒤에 조용한 뒤편이 붙어 있다'],
+    push: ['일은 기다리면 풀린다고들 믿는다', '일은 부딪쳐야 풀린다고들 믿는다'],
+    bond: ['각자 제 일을 한다', '무슨 일이든 누구와 함께 한다'],
+    clock: ['서두를 일이 없다', '다가오는 날이 있어 다들 날짜를 센다'],
+    trace: ['지난 일을 붙들지 않는다', '지난 일의 자국이 곳곳에 남아 있다'],
+    stir: ['해 오던 대로 하려 한다', '뭔가 바꿔 보려는 사람이 있다'],
+    open: ['길이 막힌 데가 많고 시야가 좁다', '사방이 트여 멀리까지 보인다'],
+    rift: ['서로 마주치면 인사한다', '서로 피해 다니는 사람들이 있다'],
+    care: ['제 앞가림은 제가 한다', '누가 누구를 챙기는 일이 흔하다'],
+  };
+  const FKEYS = Object.keys(FACETS);
+  // 답 → 결 점수 (질문 key.값: {결: 가중치}). 한 답이 여러 결에, 한 결이 여러 답에
+  const SCORE = {
+    dist: { near: { gap: -2, open: 1, bond: 1 }, open: { gap: -1, open: 1 }, slow: { gap: 1, rift: 1, bond: 1 }, far: { gap: 2, talk: 1, open: -1 } },
+    expr: { open: { talk: -2, back: -1 }, mask: { talk: 1, back: 2 }, deflect: { talk: 0, back: 2, bond: 1 }, later: { talk: 2, gap: 1 } },
+    conf: { confront: { push: 2, talk: -1, rift: 1 }, endure: { push: -2, talk: 1, trace: 1 }, withdraw: { push: -1, rift: 2, talk: 1 }, understand: { push: 0, care: 2, talk: -1 } },
+    val: { principle: { bond: -1, clock: 1, stir: -1 }, people: { bond: 2, care: 1 }, heart: { push: 1, stir: 1 }, future: { clock: 2, trace: 1 } },
+    fear: { disliked: { rift: 2, back: 1 }, fail: { clock: 2, back: 1 }, loss: { bond: 1, trace: 2 }, stuck: { stir: 2, clock: 1 } },
+    cope: { reach: { push: 1, care: 1, stir: 1 }, brood: { trace: 2, talk: 1 }, guard: { back: 2, push: -1 }, leave: { gap: 1, rift: 1, open: 1 } },
+    joy: { together: { bond: 2, gap: -1 }, immersed: { gap: 1, bond: -2 }, new: { open: 2, stir: 1 }, helpful: { care: 2, bond: 1 } },
+    mask: { bright: { back: 2, bond: 1 }, calm: { back: 1, talk: 1 }, strong: { care: 1, back: 1, bond: -1 }, unknown: { talk: 2, back: 1 }, same: { back: -3, talk: -1 } },
+    regret: { unsaid: { trace: 2, talk: 1 }, missed: { trace: 1, stir: 1, open: 1 }, ended: { trace: 2, rift: 1 }, none: { trace: -3, clock: -1 } },
+    wish: { understood: { talk: 1, bond: 1 }, free: { stir: 2, open: 1, bond: -1 }, safe: { care: 2, stir: -1 }, grow: { stir: 1, clock: 1 } },
+  };
+  // 뽑기로 정하는 결 두 개 (답 하나가 그대로 정하지 않게 다른 답과 시드가 섞인다)
+  const TRACE_KINDS = ['unsaid', 'missed', 'ended', 'now'];   // 지난 일의 종류 ('now' = 지난 일 대신 지금 벌어지는 일)
+  const SPARKS = ['together', 'immersed', 'new', 'helpful'];   // 가장 살아 있는 곳의 종류
+
+  // 인물의 속: 소중한 것 → 원하는 것 → 두려운 것 (이어지는 묶음). aff: 어떤 결의 세계에 흔한가. react: 기다리는 규칙
+  const CORES = [
+    { id: 'promise', dear: '약속', want: '맡은 일을 끝까지 해내고 싶다', fear: '믿고 맡긴 사람을 실망시키는 것', aff: { clock: 1, bond: 0.5 }, react: ['keepword', 'visit'] },
+    { id: 'custom', dear: '해 오던 방식', want: '올해도 같은 순서로 치르고 싶다', fear: '익숙한 것이 사라지는 것', aff: { stir: -1.2, trace: 0.4 }, react: ['resist', 'soften'] },
+    { id: 'newway', dear: '새 길', want: '아무도 안 해 본 방식을 해 보고 싶다', fear: '평생 같은 자리에 머무는 것', aff: { stir: 1.2 }, react: ['tryit', 'leavehint'] },
+    { id: 'table', dear: '곁의 사람들', want: '다들 한 상에 앉히고 싶다', fear: '누가 말없이 떠나는 것', aff: { bond: 1.2, care: 0.5 }, react: ['invite', 'visit'] },
+    { id: 'craft', dear: '손의 일', want: '만들던 것을 제대로 끝내고 싶다', fear: '대충 끝내야 하는 것', aff: { gap: 0.7, bond: -0.6 }, react: ['shutin', 'showwork'] },
+    { id: 'truth', dear: '있었던 그대로', want: '무슨 일이 있었는지 바로 알고 싶다', fear: '모르는 채 덮이는 것', aff: { push: 0.8, talk: -0.6 }, react: ['askaround', 'tellall'] },
+    { id: 'quiet', dear: '조용한 하루', want: '아무 일 없이 지나갔으면 한다', fear: '목소리가 커지는 것', aff: { push: -1, talk: 0.8 }, react: ['avoid', 'soften'] },
+    { id: 'debt', dear: '갚을 것', want: '받은 것을 갚고 싶다', fear: '갚지 못한 채 끝나는 것', aff: { trace: 1, care: 0.4 }, react: ['gift', 'visit'] },
+    { id: 'face', dear: '체면', want: '잘 해낸 사람으로 기억되고 싶다', fear: '실수가 알려지는 것', aff: { back: 1.2 }, react: ['hide', 'showwork'] },
+    { id: 'ownway', dear: '내 뜻', want: '남 눈치 보지 않고 정하고 싶다', fear: '남이 대신 정해 주는 것', aff: { stir: 0.6, gap: 0.6, bond: -0.5 }, react: ['shutin', 'tryit'] },
+    { id: 'tend', dear: '돌보는 것', want: '곁의 누군가를 무사히 지키고 싶다', fear: '돌보던 것이 다치는 것', aff: { care: 1.3 }, react: ['guard', 'gift'] },
+    { id: 'stay', dear: '이 자리', want: '이곳을 떠나지 않고 싶다', fear: '떠나야 하는 날이 오는 것', aff: { stir: -0.7, trace: 0.5, open: -0.4 }, react: ['resist', 'keepword'] },
+    { id: 'away', dear: '바깥', want: '한 번은 여기를 떠나 보고 싶다', fear: '떠나지 못하고 늙는 것', aff: { open: 1, stir: 0.7 }, react: ['leavehint', 'askaround'] },
+    { id: 'fair', dear: '공평함', want: '몫을 똑같이 나누고 싶다', fear: '한쪽만 손해 보는 것', aff: { rift: 0.7, push: 0.5 }, react: ['tellall', 'resist'] },
+    { id: 'keep', dear: '기억', want: '잊히지 않게 남겨 두고 싶다', fear: '아무도 기억하지 못하는 것', aff: { trace: 1.2 }, react: ['showwork', 'visit'] },
+    { id: 'laugh', dear: '웃음', want: '다들 한 번 크게 웃게 하고 싶다', fear: '분위기가 가라앉는 것', aff: { bond: 0.7, back: 0.6, talk: -0.3 }, react: ['invite', 'hide'] },
+  ];
+  // 기다리는 규칙: 어떤 일을 보면(when) 무엇을 한다(does). 세계의 사건·길·관계를 바꾼다
+  const REACT = {
+    keepword: { when: 'promise_kept', does: 'opens', say: '약속이 지켜지는 걸 보면, 잠가 두던 문을 연다' },
+    visit: { when: 'reconciled', does: 'visits', say: '화해를 보면, 저녁마다 그 집에 들른다' },
+    resist: { when: 'changed', does: 'blocks', say: '방식이 바뀌면, 길목에 나와 막아선다' },
+    soften: { when: 'heard', does: 'warms', say: '제 이야기를 끝까지 들어 주면, 반대하던 일에 한 발 물러선다' },
+    tryit: { when: 'changed', does: 'helps', say: '뭔가 바뀌기 시작하면, 먼저 나서서 거든다' },
+    leavehint: { when: 'opened', does: 'leaves', say: '막혔던 길이 열리면, 짐을 싸기 시작한다' },
+    invite: { when: 'heard', does: 'gathers', say: '누가 속을 털어놓으면, 그 사람을 저녁상에 부른다' },
+    shutin: { when: 'forced', does: 'shuts', say: '억지로 끼어들면, 문을 닫아걸고 며칠 나오지 않는다' },
+    showwork: { when: 'helped', does: 'gives', say: '도움을 받으면, 만들던 것을 처음으로 보여 준다' },
+    askaround: { when: 'revealed', does: 'spreads', say: '숨겨진 일이 드러나면, 다른 일도 캐묻고 다닌다' },
+    tellall: { when: 'revealed', does: 'confronts', say: '사실이 드러나면, 당사자를 찾아가 따진다' },
+    avoid: { when: 'confronted', does: 'detours', say: '다툼이 나면, 돌아가는 길로만 다닌다' },
+    gift: { when: 'helped', does: 'gives', say: '도움을 받으면, 문 앞에 뭔가를 놓고 간다' },
+    hide: { when: 'revealed', does: 'shuts', say: '제 일이 드러나면, 사람 많은 곳에 나오지 않는다' },
+    guard: { when: 'forced', does: 'blocks', say: '돌보는 사람이 몰리면, 그 앞을 막아선다' },
+  };
+  // 하는 일. place: 일터 종류, land: 필요한 땅('water'|'high'|null), likes: 어울리는 속
+  const JOBS = [
+    { id: 'baker', name: '빵 굽는 사람', place: 'oven', likes: ['table', 'promise', 'tend'] },
+    { id: 'ferry', name: '뱃사공', place: 'landing', land: 'water', likes: ['away', 'debt', 'quiet'] },
+    { id: 'mender', name: '연장 고치는 사람', place: 'forge', likes: ['craft', 'debt', 'promise'] },
+    { id: 'joiner', name: '목수', place: 'woodshop', likes: ['craft', 'ownway', 'keep'] },
+    { id: 'sluice', name: '수문지기', place: 'sluice', land: 'water', likes: ['custom', 'promise', 'stay'] },
+    { id: 'bell', name: '종 치는 사람', place: 'belfry', land: 'high', likes: ['custom', 'keep', 'face'] },
+    { id: 'post', name: '편지 나르는 사람', place: 'postbox', likes: ['truth', 'away', 'laugh'] },
+    { id: 'herb', name: '약초 가꾸는 사람', place: 'herbs', likes: ['tend', 'quiet', 'stay'] },
+    { id: 'weaver', name: '베 짜는 사람', place: 'loom', likes: ['craft', 'keep', 'face'] },
+    { id: 'host', name: '쉼터 주인', place: 'rest', likes: ['table', 'laugh', 'fair'] },
+    { id: 'fisher', name: '낚시꾼', place: 'jetty', land: 'water', likes: ['quiet', 'ownway', 'stay'] },
+    { id: 'tutor', name: '글 가르치는 사람', place: 'school', likes: ['truth', 'fair', 'newway'] },
+    { id: 'herder', name: '언덕에서 양 치는 사람', place: 'pasture', land: 'high', likes: ['ownway', 'quiet', 'away'] },
+    { id: 'lamp', name: '등불 켜는 사람', place: 'lampstore', likes: ['promise', 'tend', 'keep'] },
+    { id: 'survey', name: '길 재는 사람', place: 'lookout', land: 'high', likes: ['newway', 'truth', 'away'] },
+    { id: 'cook', name: '큰 솥 맡은 사람', place: 'kitchen', likes: ['table', 'laugh', 'debt'] },
+    { id: 'miller', name: '방앗간 주인', place: 'mill', land: 'water', likes: ['fair', 'custom', 'face'] },
+    { id: 'peddler', name: '손수레 장수', place: 'cart', likes: ['newway', 'laugh', 'away'] },
+  ];
+  // 장소 종류: name, role(생활 life·모임 common·자국 site·뒤편 back·전망 view), water/high: 그 땅이어야 한다
+  const PLACES = {
+    oven: { name: '화덕집', role: 'life' }, landing: { name: '나루', role: 'life', water: 1 }, forge: { name: '대장간', role: 'life' }, woodshop: { name: '목공소', role: 'life' },
+    sluice: { name: '수문', role: 'life', water: 1 }, belfry: { name: '종루', role: 'life', high: 1 }, postbox: { name: '우체함 거리', role: 'life' }, herbs: { name: '약초밭', role: 'life' },
+    loom: { name: '베틀집', role: 'life' }, rest: { name: '쉼터', role: 'common' }, jetty: { name: '낚시터', role: 'life', water: 1 }, school: { name: '글방', role: 'life' },
+    pasture: { name: '언덕 목장', role: 'life', high: 1 }, lampstore: { name: '등불 창고', role: 'life' }, lookout: { name: '측량대', role: 'view', high: 1 }, kitchen: { name: '큰 부엌', role: 'common' },
+    mill: { name: '방앗간', role: 'life', water: 1 }, cart: { name: '손수레 자리', role: 'life' },
+    homes: { name: '집들', role: 'life' }, house: { name: '외딴집', role: 'life' }, table: { name: '긴 저녁상', role: 'common' }, well: { name: '우물가', role: 'common' }, square: { name: '너른 마당', role: 'common' },
+    watermark: { name: '물 자국 남은 둑', role: 'site', water: 1 }, footing: { name: '짓다 만 돌 기초', role: 'site' }, emptyhouse: { name: '빈집', role: 'site' }, oldroad: { name: '풀 덮인 옛길', role: 'site' },
+    tryst: { name: '약속하던 나무 아래', role: 'site' }, fork: { name: '갈림길 표지', role: 'site' }, sickroom: { name: '겨울을 난 방', role: 'site' }, lostspot: { name: '물건을 잃은 자리', role: 'site' },
+    stage: { name: '뽑힌 사람이 서던 단', role: 'site' }, broken: { name: '멈춘 물레', role: 'site' },
+    backporch: { name: '뒷마루', role: 'back' }, backroom: { name: '안쪽 작업방', role: 'back' }, ridge: { name: '내려다보는 자리', role: 'view', high: 1 }, crossing: { name: '건널목', role: 'life', water: 1 },
+  };
+  // 지난 일 틀. roles: 자리. rel: 생기는 관계 [누가, 누구에게, 종류]. knot: 남는 매듭. kinds: 어울리는 '지난 일의 종류'
+  const PASTS = [
+    { id: 'flood', text: '큰물이 나던 해, {a}이(가) {b}의 집 살림을 건져 냈다. {b}은(는) 고맙다는 말을 아직 못 했다.', site: 'watermark', rel: [['b', 'a', 'debt']], knot: 'unpaid', kinds: ['unsaid'], land: 'water' },
+    { id: 'winter', text: '{b}이(가) 겨울 내내 앓을 때 {a}이(가) 매일 들렀다. 봄이 되고는 서로 그 얘기를 꺼내지 않는다.', site: 'sickroom', rel: [['b', 'a', 'debt'], ['a', 'b', 'care']], knot: 'unpaid', kinds: ['unsaid', 'ended'] },
+    { id: 'unbuilt', text: '{a}과(와) {b}은(는) 같이 뭔가를 짓다가 그만뒀다. 왜 그만뒀는지는 둘의 말이 다르다.', site: 'footing', rel: [['a', 'b', 'rift'], ['b', 'a', 'rift']], knot: 'halfbuilt', kinds: ['ended', 'missed'], differ: true },
+    { id: 'farewell', text: '떠난 사람을 마지막으로 본 건 {a}이다. 그 사람은 {b}에게 전할 말을 남겼고, {a}은(는) 아직 전하지 못했다.', site: 'emptyhouse', rel: [['a', 'b', 'secret']], knot: 'unsaid', kinds: ['unsaid', 'ended'] },
+    { id: 'chosen', text: '한 사람만 뽑던 날 {a}이(가) 뽑혔고 {b}은(는) 그러지 못했다. 그 뒤로 둘은 일로만 말한다.', site: 'stage', rel: [['b', 'a', 'rival'], ['a', 'b', 'uneasy']], knot: 'envy', kinds: ['missed', 'ended'] },
+    { id: 'lost', text: '{a}이(가) 아끼던 것을 잃어버렸다. {b}은(는) 그걸 주웠지만 돌려줄 때를 놓쳤다.', site: 'lostspot', rel: [['b', 'a', 'secret']], knot: 'kept', kinds: ['unsaid', 'missed'] },
+    { id: 'vow', text: '{a}은(는) {b}과(와) 한 약속을 지키지 못했다. 사정이 있었지만 말하지 않았다.', site: 'tryst', rel: [['b', 'a', 'hurt'], ['a', 'b', 'debt']], knot: 'broken', kinds: ['unsaid', 'ended'] },
+    { id: 'blame', text: '{c}이(가) 저지른 일로 {a}이(가) 대신 눈총을 받았다. {c}은(는) 지금까지 입을 다물고 있다.', site: 'broken', rel: [['c', 'a', 'secret'], ['a', 'c', 'trust']], knot: 'blame', kinds: ['unsaid'], three: true },
+    { id: 'split', text: '길을 어느 쪽으로 낼지를 두고 {a} 쪽과 {b} 쪽이 갈라섰다. 그날 뒤로 양쪽은 다른 길로 다닌다.', site: 'fork', rel: [['a', 'b', 'rift'], ['b', 'a', 'rift']], knot: 'divide', kinds: ['ended'] },
+    { id: 'stayed', text: '{a}에게는 떠날 기회가 한 번 있었다. {b}이(가) 붙잡았고, {a}은(는) 남았다.', site: 'oldroad', rel: [['a', 'b', 'hurt'], ['b', 'a', 'debt']], knot: 'stayed', kinds: ['missed'] },
+  ];
+  // 지금 벌어지는 일 (지난 일이 가벼운 세계)
+  const NOWS = [
+    { id: 'dispute', text: '올해 큰일을 치르는 방식을 두고 {a}은(는) 하던 대로, {b}은(는) 새로 하자고 한다.', site: 'square', rel: [['a', 'b', 'uneasy'], ['b', 'a', 'uneasy']], knot: 'dispute', want: [['custom', 'stay', 'promise'], ['newway', 'ownway', 'away']] },
+    { id: 'breakdown', text: '다 같이 쓰는 물레가 멈췄다. {a}은(는) 제 탓이라 여기고, {b}은(는) 고칠 줄 알지만 나서지 않는다.', site: 'broken', rel: [['a', 'b', 'uneasy']], knot: 'breakdown' },
+    { id: 'newcomer', text: '{a}은(는) 온 지 얼마 안 됐다. 어디서 지낼지 무슨 일을 할지 아직 정해지지 않았고, {b}이(가) 그걸 못마땅해한다.', site: 'well', rel: [['b', 'a', 'uneasy']], knot: 'newcomer' },
+    { id: 'feast', text: '잔치 준비가 밀렸다. {a}은(는) 혼자 다 하려 들고, {b}은(는) 부탁받지 못해 서운하다.', site: 'kitchen', rel: [['b', 'a', 'hurt']], knot: 'overload' },
+  ];
+  // 상황 장치 (겹칠 수 있는 세계의 규칙)
+  const DEVICES = {
+    sunset: { name: '해 지기 전', say: '해가 지면 그날이 온다. 그 전에 할 수 있는 일은 몇 가지뿐이다.' },
+    rumor: { name: '하루 뒤 소문', say: '한 일은 다음 날 관계 있는 사람들 귀에 들어간다.' },
+    absence: { name: '빈자리', say: '모두 아는데 아무도 말하지 않는 일이 있다. 물어도 처음에는 나오지 않는다.' },
+    camps: { name: '두 무리', say: '사람들이 둘로 나뉘어 있다. 한쪽과 가까워지면 다른 쪽이 안다.' },
+    guest: { name: '손님', say: '새로 온 사람이 하나 더 있다. 그 사람도 돌아다니며 일을 벌인다.' },
+    cycle: { name: '되풀이', say: '물때와 종소리에 맞춰 길이 열리고 닫힌다. 때를 맞춰야 하는 일이 있다.' },
+  };
+  // 사건 조각. title: 제목 틀. ways: 푸는 방법 후보 [방법, 필요 조건, 흔적(무엇이 남는가)]
+  const PIECES = {
+    trace: { title: '{site}에서 남은 자국 살피기', ways: [['look', null, null], ['shine', null, 'seen'], ['ask', 'bond', null]] },
+    side: { title: '{who}의 이야기 듣기', ways: [['talk', 'trust', 'heard'], ['wrap', null, 'heard'], ['wait', null, 'heard'], ['press', 'push', 'forced']] },
+    trust: { title: '{who}의 일 거들기', ways: [['errand', null, 'helped'], ['push', null, 'helped'], ['guard', 'care', 'helped']] },
+    follow: { title: '{who}의 뒤를 따라가 보기', ways: [['walk', null, null], ['shine', null, 'seen']] },
+    fetch: { title: '{site}에서 필요한 것 가져오기', ways: [['walk', null, null], ['ask', 'bond', 'helped']] },
+    gather: { title: '{who}과(와) {whom}을(를) 한자리에 앉히기', ways: [['call', null, 'gathered'], ['carry', null, 'gathered'], ['press', 'push', 'forced']] },
+    mend: { title: '{site} 손보기', ways: [['push', null, 'changed'], ['together', 'gathered', 'changed'], ['shine', null, 'changed']] },
+    reveal: { title: '{whom}에게 있었던 일 알리기', ways: [['tell', null, 'revealed'], ['shine', null, 'revealed'], ['leave', null, 'revealed']] },
+    wait: { title: '{site}에서 때 기다리기', ways: [['wait', null, null]] },
+    guard: { title: '{site} 지켜 내기', ways: [['wrap', null, 'helped'], ['push', null, 'forced']] },
+    choose: { title: '{topic} 정하기', ways: [] },
+  };
+  const WAY = { look: '살펴본다', shine: '비춘다(도구)', ask: '이웃에게 묻는다', talk: '말을 건다', wrap: '곁을 감싼다(도구)', wait: '기다려 준다', press: '다그친다', errand: '심부름을 한다', push: '힘으로 해낸다(도구)', guard: '대신 막아 준다', walk: '직접 걸어간다', call: '불러 모은다(도구)', carry: '말을 양쪽에 전한다', together: '둘과 함께 한다', tell: '직접 말한다', leave: '문 앞에 두고 온다', slow: '시간을 들여 혼자 한다' };
+  const VERB_WAYS = { push: ['push', 'press'], wrap: ['wrap', 'guard'], shine: ['shine'], call: ['call'] }; // 도구 동사가 열어 주는 방법
+  // 매듭 → 사건 펼침 규칙. 조건(if)에 맞는 것 중에서 고른다. steps: [조각, 누구, 조건(앞 단계 번호들)] / ends: 고르기의 갈래
+  const KNOTS = {
+    unpaid: { say: '{b}이(가) {a}에게 못 한 고마움', topic: '그 고마움을 어떻게 할지', rules: [
+      { steps: [['trace'], ['side', 'b', [0]], ['choose', null, [1]]], ends: ['tell_for', 'bring', 'gift'] },
+      { if: (f) => f.talk >= 4, steps: [['trace'], ['trust', 'b', [0]], ['side', 'b', [1]], ['side', 'a', [2]], ['gather', 'ab', [3]], ['choose', null, [4]]], ends: ['bring', 'gift', 'leave'] },
+      { if: (f) => f.rift >= 4 || f.gap >= 5, steps: [['follow', 'b'], ['side', 'b', [0]], ['reveal', 'a', [1]], ['choose', null, [2]]], ends: ['tell_for', 'leave'] } ] },
+    halfbuilt: { say: '{a}과(와) {b}이(가) 짓다 만 것', topic: '짓다 만 것을 어떻게 할지', rules: [
+      { steps: [['trace'], ['side', 'a', [0]], ['side', 'b', [0]], ['choose', null, [1, 2]]], ends: ['finish_together', 'finish_alone', 'reuse'] },
+      { if: (f) => f.push >= 4, steps: [['trace'], ['fetch', null, [0]], ['mend', null, [1]], ['side', 'a', [2]], ['side', 'b', [2]], ['choose', null, [3, 4]]], ends: ['finish_together', 'reuse'] },
+      { if: (f) => f.talk >= 5, steps: [['trace'], ['trust', 'a', [0]], ['side', 'a', [1]], ['trust', 'b', [0]], ['side', 'b', [3]], ['gather', 'ab', [2, 4]], ['choose', null, [5]]], ends: ['finish_together', 'reuse', 'leave'] } ] },
+    unsaid: { say: '{a}이(가) {b}에게 전하지 못한 말', topic: '맡아 둔 말을 어떻게 할지', rules: [
+      { steps: [['trace'], ['trust', 'a', [0]], ['side', 'a', [1]], ['choose', null, [2]]], ends: ['deliver', 'keep', 'light'] },
+      { if: (f) => f.care >= 4, steps: [['side', 'b'], ['trace', null, [0]], ['side', 'a', [1]], ['reveal', 'b', [2]], ['choose', null, [3]]], ends: ['deliver', 'light'] },
+      { if: (f) => f.back >= 4, steps: [['trace'], ['follow', 'a', [0]], ['side', 'a', [1]], ['side', 'b', [0]], ['choose', null, [2, 3]]], ends: ['deliver', 'keep', 'bring'] } ] },
+    envy: { say: '뽑힌 {a}과(와) 뽑히지 못한 {b}', topic: '둘 사이를 어떻게 둘지', rules: [
+      { steps: [['side', 'b'], ['follow', 'a', [0]], ['choose', null, [1]]], ends: ['show_struggle', 'swap', 'leave'] },
+      { if: (f) => f.bond >= 4, steps: [['trace'], ['side', 'a', [0]], ['side', 'b', [0]], ['trust', 'b', [2]], ['gather', 'ab', [1, 3]], ['choose', null, [4]]], ends: ['swap', 'share_work'] } ] },
+    kept: { say: '{b}이(가) 돌려주지 못한 {a}의 물건', topic: '그 물건을 어떻게 할지', rules: [
+      { steps: [['trace'], ['side', 'b', [0]], ['choose', null, [1]]], ends: ['return_by_b', 'return_self', 'keep'] },
+      { if: (f) => f.back >= 4 || f.talk >= 5, steps: [['side', 'a'], ['trace', null, [0]], ['follow', 'b', [1]], ['side', 'b', [2]], ['choose', null, [3]]], ends: ['return_by_b', 'return_self'] } ] },
+    broken: { say: '{a}이(가) {b}에게 지키지 못한 약속', topic: '어긴 약속을 어떻게 할지', rules: [
+      { steps: [['trace'], ['side', 'b', [0]], ['side', 'a', [1]], ['choose', null, [2]]], ends: ['explain', 'redo', 'leave'] },
+      { if: (f) => f.clock >= 4, steps: [['side', 'b'], ['side', 'a', [0]], ['fetch', null, [1]], ['wait', null, [2]], ['choose', null, [3]]], ends: ['redo', 'explain'] } ] },
+    blame: { say: '{c}의 일로 {a}이(가) 받은 눈총', topic: '드러난 사실을 어떻게 할지', rules: [
+      { steps: [['side', 'a'], ['trace', null, [0]], ['trust', 'c', [1]], ['side', 'c', [2]], ['choose', null, [3]]], ends: ['public', 'private', 'keep'] },
+      { if: (f) => f.push >= 5, steps: [['trace'], ['side', 'c', [0]], ['reveal', 'a', [1]], ['choose', null, [2]]], ends: ['public', 'private'] } ] },
+    divide: { say: '{a} 쪽과 {b} 쪽으로 갈린 길', topic: '갈린 길을 어떻게 할지', rules: [
+      { steps: [['side', 'a'], ['side', 'b'], ['fetch', null, [0, 1]], ['choose', null, [2]]], ends: ['bridge', 'newpath', 'fence'] },
+      { if: (f) => f.care >= 4, steps: [['trace'], ['trust', 'a', [0]], ['trust', 'b', [0]], ['side', 'a', [1]], ['side', 'b', [2]], ['gather', 'ab', [3, 4]], ['choose', null, [5]]], ends: ['bridge', 'newpath'] } ] },
+    stayed: { say: '떠나지 못한 {a}과(와) 붙잡은 {b}', topic: '옛길을 어떻게 할지', rules: [
+      { steps: [['trace'], ['side', 'a', [0]], ['choose', null, [1]]], ends: ['open_road', 'bless_stay', 'go'] },
+      { if: (f) => f.bond >= 4, steps: [['trace'], ['side', 'a', [0]], ['side', 'b', [1]], ['mend', null, [2]], ['choose', null, [3]]], ends: ['open_road', 'go', 'bless_stay'] } ] },
+    dispute: { say: '{a}의 하던 대로와 {b}의 새로 하자', topic: '올해를 어떻게 치를지', rules: [
+      { steps: [['side', 'a'], ['side', 'b'], ['choose', null, [0, 1]]], ends: ['old', 'new', 'both'] },
+      { if: (f) => f.stir >= 4, steps: [['side', 'b'], ['fetch', null, [0]], ['mend', null, [1]], ['side', 'a', [2]], ['choose', null, [3]]], ends: ['new', 'both'] },
+      { if: (f) => f.clock >= 5, steps: [['side', 'a'], ['trust', 'a', [0]], ['side', 'b', [0]], ['guard', null, [1, 2]], ['choose', null, [3]]], ends: ['old', 'both'] } ] },
+    breakdown: { say: '멈춘 물레와 나서지 않는 {b}', topic: '고친 공을 누구에게 돌릴지', rules: [
+      { steps: [['trace'], ['fetch', null, [0]], ['mend', null, [1]], ['choose', null, [2]]], ends: ['credit_a', 'credit_b', 'quiet'] },
+      { if: (f) => f.talk >= 4, steps: [['trace'], ['side', 'a', [0]], ['trust', 'b', [0]], ['side', 'b', [2]], ['mend', null, [1, 3]], ['choose', null, [4]]], ends: ['credit_b', 'quiet'] } ] },
+    newcomer: { say: '자리가 없는 {a}과(와) 못마땅한 {b}', topic: '{a}이(가) 어디에 머물지', rules: [
+      { steps: [['side', 'a'], ['trust', 'a', [0]], ['side', 'b', [0]], ['choose', null, [1, 2]]], ends: ['settle_work', 'settle_b', 'move_on'] },
+      { if: (f) => f.open >= 4, steps: [['follow', 'a'], ['side', 'a', [0]], ['fetch', null, [1]], ['choose', null, [2]]], ends: ['settle_work', 'move_on'] } ] },
+    overload: { say: '혼자 다 하려는 {a}과(와) 서운한 {b}', topic: '잔치 일을 어떻게 나눌지', rules: [
+      { steps: [['trust', 'a'], ['side', 'b'], ['side', 'a', [0]], ['choose', null, [1, 2]]], ends: ['share_work', 'take_over', 'leave'] },
+      { if: (f) => f.clock >= 4, steps: [['side', 'b'], ['guard', null, [0]], ['gather', 'ab', [1]], ['choose', null, [2]]], ends: ['share_work', 'take_over'] } ] },
+  };
+  // 갈래의 결과. say: 뒷이야기 한 줄. rel: [누가, 누구, 변화]. tag: 번지는 꼬리표. map: 지도에 남는 변화(link: 길, place: 장소)
+  const ENDS = {
+    tell_for: { say: '{b} 대신 고마움을 전했다. {a}은(는) 누가 시켰는지 안다.', rel: [['a', 'b', 1]], tag: 'revealed' },
+    bring: { say: '{b}이(가) 제 입으로 말하게 자리를 만들었다.', rel: [['a', 'b', 2], ['b', 'a', 2]], tag: 'reconciled', map: { place: 'table+' } },
+    gift: { say: '{a}의 문 앞에 이름 없는 꾸러미가 놓였다.', rel: [['a', 'b', 0]], tag: 'helped', map: { place: 'doorstep' } },
+    leave: { say: '그대로 두었다. 달라진 것은 플레이어가 안다는 사실뿐이다.', rel: [], tag: null },
+    finish_together: { say: '둘이 남은 것을 같이 지었다.', rel: [['a', 'b', 2], ['b', 'a', 2]], tag: 'reconciled', map: { place: 'built', link: 'new' } },
+    finish_alone: { say: '한 사람이 혼자 마저 지었다. 다른 한 사람은 멀리서 봤다.', rel: [['a', 'b', -1]], tag: 'changed', map: { place: 'built' } },
+    reuse: { say: '짓다 만 자리는 다른 쓸모를 얻었다.', rel: [['a', 'b', 1], ['b', 'a', 1]], tag: 'changed', map: { place: 'reused' } },
+    deliver: { say: '맡아 둔 말이 {b}에게 닿았다.', rel: [['b', 'a', 1]], tag: 'promise_kept', map: { place: 'table-' } },
+    keep: { say: '말하지 않기로 했다. 아는 사람이 하나 늘었을 뿐이다.', rel: [['a', 'p', 1]], tag: null },
+    light: { say: '빈자리에 불을 켰다. 말은 전하지 않았지만 다들 그 불을 본다.', rel: [], tag: 'changed', map: { place: 'lit' } },
+    show_struggle: { say: '{b}이(가) {a}의 밤늦은 연습을 보게 됐다.', rel: [['b', 'a', 2]], tag: 'revealed' },
+    swap: { say: '하루 동안 서로의 일을 바꿔 했다.', rel: [['a', 'b', 1], ['b', 'a', 1]], tag: 'changed' },
+    share_work: { say: '일을 둘로 나눴다.', rel: [['a', 'b', 2], ['b', 'a', 2]], tag: 'reconciled' },
+    return_by_b: { say: '{b}이(가) 직접 돌려줬다.', rel: [['a', 'b', 1]], tag: 'promise_kept' },
+    return_self: { say: '물건은 돌아갔고, 누가 갖고 있었는지는 묻혔다.', rel: [['b', 'p', 1]], tag: 'helped' },
+    explain: { say: '{a}이(가) 그날의 사정을 말했다.', rel: [['b', 'a', 1]], tag: 'heard' },
+    redo: { say: '약속을 처음부터 다시 했다. 이번에는 날을 정했다.', rel: [['b', 'a', 2], ['a', 'b', 1]], tag: 'promise_kept', map: { place: 'marked' } },
+    public: { say: '모두 있는 데서 사실이 밝혀졌다.', rel: [['a', 'c', -2], ['c', 'p', -1]], tag: 'revealed' },
+    private: { say: '{c}이(가) {a}에게만 털어놓았다.', rel: [['a', 'c', 1]], tag: 'reconciled' },
+    bridge: { say: '갈린 두 길 사이에 건널 데가 생겼다.', rel: [['a', 'b', 1], ['b', 'a', 1]], tag: 'opened', map: { link: 'new' } },
+    newpath: { say: '어느 쪽 것도 아닌 세 번째 길이 났다.', rel: [], tag: 'changed', map: { link: 'third' } },
+    fence: { say: '갈림길에 울타리가 섰다. 이제 서로 마주칠 일이 없다.', rel: [['a', 'b', -1], ['b', 'a', -1]], tag: 'confronted', map: { link: 'cut' } },
+    open_road: { say: '풀 덮인 옛길이 다시 길이 됐다.', rel: [['a', 'b', 1]], tag: 'opened', map: { link: 'reopen' } },
+    bless_stay: { say: '{a}은(는) 남기로 한 날을 처음으로 제 입으로 말했다.', rel: [['a', 'b', 2]], tag: 'heard' },
+    go: { say: '{a}이(가) 떠났다. 일터는 비었다.', rel: [['b', 'a', -1]], tag: 'opened', map: { npc: 'a-leaves' } },
+    old: { say: '올해도 하던 대로 치렀다.', rel: [['a', 'p', 1], ['b', 'p', -1]], tag: null },
+    new: { say: '올해는 처음 해 보는 방식으로 치렀다.', rel: [['b', 'p', 1], ['a', 'p', -1]], tag: 'changed', map: { place: 'changed' } },
+    both: { say: '반은 하던 대로, 반은 새로 했다. 둘 다 조금씩 불만이다.', rel: [['a', 'b', 1]], tag: 'changed' },
+    credit_a: { say: '고친 공은 {a}에게 돌아갔다.', rel: [['a', 'p', 1], ['b', 'a', -1]], tag: 'helped', map: { place: 'running' } },
+    credit_b: { say: '{b}이(가) 고쳤다고 알려졌다. {b}은(는) 그 뒤로 자주 불려 다닌다.', rel: [['b', 'p', 1], ['a', 'b', 1]], tag: 'revealed', map: { place: 'running' } },
+    quiet: { say: '누가 고쳤는지 아무도 모른 채 물레가 다시 돈다.', rel: [], tag: 'helped', map: { place: 'running' } },
+    settle_work: { say: '{a}에게 일터가 생겼다.', rel: [['a', 'p', 2]], tag: 'helped', map: { place: 'newshop' } },
+    settle_b: { say: '{a}은(는) {b}의 일을 거들며 지내기로 했다.', rel: [['a', 'b', 1], ['b', 'a', 1]], tag: 'reconciled' },
+    move_on: { say: '{a}은(는) 다음 마을로 갔다.', rel: [['b', 'p', 0]], tag: 'opened', map: { npc: 'a-leaves' } },
+    take_over: { say: '{b}이(가) 일을 통째로 가져갔다.', rel: [['a', 'b', -1]], tag: 'forced' },
+  };
+  // 반대로 당기는 결: 평균 내지 않고 두 얼굴을 다 만든다. place: 생기는 장소, twist: 한 인물이 갖는 모순(이유 포함)
+  const TENSIONS = [
+    { id: 'crowd_alone', if: (f) => f.gap <= 2 && f.bond <= 2, place: 'backroom', twist: '가게에서는 수다스럽지만 작업방 문에는 "두드리지 마시오"가 붙어 있다. 사람이 좋아서가 아니라 일이 밀려서다.' },
+    { id: 'speak_avoid', if: (f) => f.push >= 5 && f.rift >= 5, place: 'crossing', twist: '할 말은 다 하는 사람인데, 그 말을 한 상대와는 돌아가는 길로만 다닌다. 말은 했지만 대답은 듣기 싫어서다.' },
+    { id: 'warm_silent', if: (f) => f.bond >= 5 && f.talk >= 5, place: 'backporch', twist: '누구에게나 밥을 퍼 주면서 제 얘기는 한마디도 안 한다. 제 얘기를 꺼내면 상이 조용해질까 봐서다.' },
+    { id: 'change_keep', if: (f) => f.stir >= 5 && f.trace >= 5, place: 'oldroad', twist: '새로 하자고 가장 크게 말하면서, 옛 물건은 하나도 못 버린다. 버리면 그때 그 사람도 없던 일이 될 것 같아서다.' },
+    { id: 'care_far', if: (f) => f.care >= 5 && f.gap >= 5, place: 'ridge', twist: '멀리 살면서 매일 내려다보고 누가 불을 안 켰는지 안다. 가까이 가면 참견이 될까 봐 내려오지 않는다.' },
+    { id: 'hurry_wait', if: (f) => f.clock >= 5 && f.push <= 2, place: 'well', twist: '날짜를 매일 세면서 정작 준비는 미룬다. 시작하면 끝나는 날도 온다는 걸 알아서다.' },
+    { id: 'bright_back', if: (f) => f.back >= 6 && f.talk <= 2, place: 'backporch', twist: '농담을 가장 많이 하는 사람이 뒷마루에 가장 오래 앉아 있다. 웃긴 사람으로 있는 게 일처럼 느껴질 때가 있어서다.' },
+    { id: 'open_closed', if: (f) => f.open >= 5 && f.stir <= 2, place: 'lookout', twist: '멀리 내다보는 자리를 누구보다 좋아하지만 그 너머로 가 본 적은 없다. 보는 것으로 충분하다고 스스로 정했다.' },
+  ];
+  const STYLES = [ // 말투
+    { id: 'plain', say: '짧게 말하고 덧붙이지 않는다', if: (f) => f.talk >= 4 },
+    { id: 'chatty', say: '묻지 않은 것까지 말한다', if: (f) => f.talk <= 3 },
+    { id: 'joke', say: '무슨 말이든 농담으로 시작한다', if: (f) => f.back >= 4 },
+    { id: 'careful', say: '상대 낯빛을 보고 말을 고른다', if: (f) => f.care >= 4 || f.rift >= 4 },
+    { id: 'blunt', say: '돌려 말할 줄 모른다', if: (f) => f.push >= 4 },
+    { id: 'work', say: '손을 멈추지 않고 말한다', if: (f) => f.bond <= 3 || f.gap >= 4 },
+  ];
+  const REL = { debt: '갚을 것이 있다', care: '챙긴다', rift: '등졌다', secret: '말 못 한 것이 있다', rival: '견준다', uneasy: '껄끄럽다', hurt: '서운하다', trust: '믿는다', kin: '한집 식구', work: '일로 엮였다', friend: '가깝다', avoid: '피해 다닌다' };
+  const LINK = { road: '넓은 길', lane: '좁은 골목', path: '풀 눌린 샛길', bridge: '다리', ford: '물 빠질 때만 건너는 여울', boat: '나룻배', stairs: '계단', gap: '틈새 길', locked: '잠긴 문', overgrown: '풀 덮인 길' };
+
+  IW.Data6 = { FACETS, FKEYS, SCORE, TRACE_KINDS, SPARKS, CORES, REACT, JOBS, PLACES, PASTS, NOWS, DEVICES, PIECES, WAY, VERB_WAYS, KNOTS, ENDS, TENSIONS, STYLES, REL, LINK };
+})(globalThis);
+
+// ---- src/gen6/world6.js ----
+/* IW6 1단계 — 글로 된 세계 생성기 (화면 없음)
+   흐름: 답 → 결(facets) → [공유 꾸러미: 시드 + 결 값 + 도구] → 세계
+         세계 = 상황 장치 · 인물(속·일·말투·겉모습·일과·기다리는 규칙) · 관계 · 함께 겪은 지난 일 · 매듭 · 사건 그래프(조건·방법·갈래) · 장소와 연결 · 끝 조건
+   중요한 규칙
+   - 세계는 **꾸러미에서만** 만든다(generate는 답을 받지 않는다). 그래서 공유 코드에 답을 넣을 필요가 없다.
+   - 같은 꾸러미 = 같은 세계. 단계마다 따로 난수를 써서, 결 하나가 바뀌면 그 결을 읽는 결정만 바뀐다.
+   - 고정된 줄거리·조각 모으기 틀이 없다. 사건은 인물 사이의 매듭에서 펼쳐진다. */
+(function (g) {
+  const IW = (g.IW = g.IW || {});
+  const D = IW.Data6, FK = D.FKEYS;
+  const hash = (a, b) => { let h = (Math.imul(a | 0, 374761393) + Math.imul(b | 0, 668265263)) | 0; h = Math.imul(h ^ (h >>> 13), 1274126177); h ^= h >>> 16; return h >>> 0; };
+  const strHash = (s) => { let h = 2166136261; for (const ch of String(s)) h = Math.imul(h ^ ch.codePointAt(0), 16777619); return h >>> 0; };
+  const rng = (seed) => { let s = (seed >>> 0) || 1; return () => { s ^= s << 13; s >>>= 0; s ^= s >>> 17; s ^= s << 5; s >>>= 0; return s / 4294967296; }; };
+  const stage = (seed, name) => rng(hash(seed, strHash(name)));
+  const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+  const pickW = (R, items, wOf) => { const ws = items.map(wOf), sum = ws.reduce((a, b) => a + b, 0); if (sum <= 0) return items[Math.floor(R() * items.length)]; let r = R() * sum; for (let i = 0; i < items.length; i++) { r -= ws[i]; if (r <= 0) return items[i]; } return items[items.length - 1]; };
+  // 결에 가장 잘 맞는 몇 개 중에서 시드가 고른다 (전부 중에서 뽑으면 시드가 세계를 정해 버린다)
+  const pickTop = (R, items, score, k) => { const top = items.map((x) => [x, score(x)]).sort((a, b) => b[1] - a[1]).slice(0, k || 3).map((x) => x[0]); const r = R(); return top[r < 0.62 ? 0 : r < 0.9 ? Math.min(1, top.length - 1) : top.length - 1]; };
+  // 조사: 이름 뒤 '이(가)' 같은 표기를 받침에 맞춰 고른다
+  const hasJong = (w) => { const c = String(w).charCodeAt(String(w).length - 1); return c >= 0xac00 && c <= 0xd7a3 ? (c - 0xac00) % 28 !== 0 : false; };
+  const josa = (s) => String(s).replace(/([^\s{}()]+)(이\(가\)|은\(는\)|을\(를\)|과\(와\))/g, (m, w, j) => w + ({ '이(가)': ['이', '가'], '은(는)': ['은', '는'], '을(를)': ['을', '를'], '과(와)': ['과', '와'] }[j][hasJong(w) ? 0 : 1])).replace(/([가-힣]+)이다\./g, (m, w) => w + (hasJong(w) ? '이다.' : '다.'));
+  // 지난 일·지금의 일이 어떤 결의 세계에 흔한가
+  const PAFF = { flood: { care: 1, bond: 0.5 }, winter: { care: 1.2, gap: -0.4 }, unbuilt: { rift: 1, stir: 0.5 }, farewell: { talk: 1, trace: 0.5 }, chosen: { clock: 1, back: 0.5 }, lost: { back: 1, talk: 0.5 }, vow: { clock: 0.6, push: -0.6, trace: 0.6 }, blame: { back: 1.2, talk: 0.8 }, split: { rift: 1.5 }, stayed: { stir: 1, open: 0.8 }, dispute: { stir: 1, clock: 0.6 }, breakdown: { talk: 0.8, push: -0.6 }, newcomer: { open: 1.1 }, feast: { bond: 1, care: 0.5 } };
+  const fill = (t, m) => josa(String(t).replace(/\{(\w+)\}/g, (x, k) => (m[k] != null ? m[k] : x)));
+
+  // ---------- 답 → 결 ----------
+  const FEEL_VERB = { wind: 'call', guard: 'wrap', shine: 'shine', song: 'call', warm: 'wrap', sharp: 'shine', power: 'push', buddy: 'call' };
+  const VERBS = ['push', 'wrap', 'shine', 'call'];
+  function facetsFrom(traits, seed, opts) {
+    opts = opts || {};
+    const sum = {}; FK.forEach((k) => (sum[k] = 0));
+    for (const q of Object.keys(D.SCORE)) { const row = D.SCORE[q][traits[q]]; if (row) for (const k in row) sum[k] += row[k]; }
+    const f = {};
+    FK.forEach((k) => { const J = stage(seed, 'jit:' + k)(); f[k] = clamp(Math.round(3.5 + sum[k] * 0.8 + (J - 0.5) * 0.8), 0, 7); });
+    // 뽑기 결: 답 하나가 그대로 정하지 않는다
+    const lot = (name, kinds, w) => pickW(stage(seed, name), kinds, (k) => 1 + (w[k] || 0));
+    const t = traits, tw = {}, sw = {};
+    const add = (o, k, v) => (o[k] = (o[k] || 0) + v);
+    add(tw, { unsaid: 'unsaid', missed: 'missed', ended: 'ended', none: 'now' }[t.regret], 7);
+    if (t.fear === 'loss') { add(tw, 'ended', 1.5); add(tw, 'unsaid', 1); } if (t.fear === 'stuck') { add(tw, 'missed', 1.2); add(tw, 'now', 1); } if (t.cope === 'brood') add(tw, 'unsaid', 1);
+    if (t.wish === 'free') add(tw, 'missed', 1.5); if (t.val === 'future') add(tw, 'missed', 1); if (t.expr === 'later' || t.expr === 'mask') add(tw, 'unsaid', 1); if (t.conf === 'withdraw') add(tw, 'ended', 1); if (t.val === 'heart') add(tw, 'now', 1);
+    add(sw, t.joy, 7); if (t.dist === 'near') add(sw, 'together', 1.5); if (t.dist === 'far') add(sw, 'immersed', 1.5); if (t.wish === 'free') add(sw, 'new', 1.5); if (t.val === 'people') { add(sw, 'helpful', 1); add(sw, 'together', 1); } if (t.mask === 'strong') add(sw, 'helpful', 1); if (t.wish === 'grow') add(sw, 'immersed', 1);
+    const tk = D.TRACE_KINDS.indexOf(lot('tk', D.TRACE_KINDS, tw)), sk = D.SPARKS.indexOf(lot('sk', D.SPARKS, sw));
+    // 도구: 좋아하는 점(있으면) → 동사. 없으면 여러 답에서 뽑는다. 모양 번호는 사전 항목의 번호일 뿐 쓴 글이 아니다
+    const vw = {}; add(vw, { confront: 'push', endure: 'wrap', withdraw: 'shine', understand: 'call' }[t.conf], 3); add(vw, { helpful: 'wrap', together: 'call', new: 'shine', immersed: 'shine' }[t.joy], 1.5); add(vw, { reach: 'call', brood: 'shine', guard: 'wrap', leave: 'push' }[t.cope], 1);
+    const verb = opts.feel && FEEL_VERB[opts.feel] ? FEEL_VERB[opts.feel] : lot('verb', VERBS, vw);
+    const form = opts.weaponKey ? strHash(opts.weaponKey) % 1024 : hash(seed, 77) % 1024;
+    return { v: 1, seed: seed >>> 0, f, tk, sk, verb: VERBS.indexOf(verb), form, diff: clamp(opts.diff | 0, 0, 3) };
+  }
+
+  // ---------- 공유 코드: IW6-<시드>-<꾸러미> (답·쓴 글 없음) ----------
+  const A32 = '0123456789ABCDEFGHJKMNPQRSTVWXYZ';
+  const toB32 = (n, len) => { let s = ''; for (let i = 0; i < len; i++) { s = A32[Number(n & 31n)] + s; n >>= 5n; } return s; };
+  const fromB32 = (s) => { let n = 0n; for (const ch of s.toUpperCase()) { const i = A32.indexOf(ch); if (i < 0) return null; n = (n << 5n) | BigInt(i); } return n; };
+  function pack(p) { let n = 0n; const put = (v, bits) => { n = (n << BigInt(bits)) | BigInt(v & ((1 << bits) - 1)); }; FK.forEach((k) => put(p.f[k], 3)); put(p.tk, 2); put(p.sk, 2); put(p.verb, 2); put(p.form, 10); put(p.diff, 2); return n; } // 51비트
+  function encode(p) { const body = pack(p), sum = BigInt(hash(Number(body & 0xffffffffn) ^ p.seed, Number(body >> 32n)) & 0x3ff); return 'IW6-' + toB32(BigInt(p.seed >>> 0), 7) + '-' + toB32((body << 10n) | sum, 13); } // 61비트 + 검사값 10비트
+  function decode(code) {
+    const m = /^IW6-([0-9A-HJKMNP-TV-Z]{7})-([0-9A-HJKMNP-TV-Z]{13})$/i.exec(String(code || '').trim()); if (!m) return null;
+    const seed = Number(fromB32(m[1]) & 0xffffffffn) >>> 0, all = fromB32(m[2]); let body = all >> 10n; const sum = Number(all & 0x3ffn);
+    if ((hash(Number(body & 0xffffffffn) ^ seed, Number(body >> 32n)) & 0x3ff) !== sum) return null; // 손상된 코드
+    const take = (bits) => { const v = Number(body & BigInt((1 << bits) - 1)); body >>= BigInt(bits); return v; };
+    const diff = take(2), form = take(10), verb = take(2), sk = take(2), tk = take(2), vals = []; for (let i = FK.length - 1; i >= 0; i--) vals[i] = take(3); const f = {}; FK.forEach((k, i) => (f[k] = vals[i]));
+    return { v: 1, seed, f, tk, sk, verb, form, diff };
+  }
+
+  // ---------- 꾸러미 → 세계 ----------
+  function generate(p, attempt) {
+    attempt = attempt || 0;
+    const seed = hash(p.seed, 6000 + attempt), f = p.f, tk = D.TRACE_KINDS[p.tk], spark = D.SPARKS[p.sk], verb = VERBS[p.verb];
+    const why = [];
+    const note = (what, facets) => why.push({ what, from: facets });
+    // 땅
+    let R = stage(seed, 'land');
+    const land = { water: (f.clock + f.rift + f.trace) / 21 + (R() - 0.5) * 0.3 > 0.48, high: f.open >= 4 || f.gap >= 5 || R() < 0.12 };
+    note('땅(물가·높은 곳)', ['clock', 'rift', 'trace', 'open', 'gap']);
+    // 상황 장치 0~2개
+    R = stage(seed, 'device');
+    const dScore = { sunset: f.clock - 4.4, rumor: (f.rift + (7 - f.gap)) / 2 - 4.2, absence: Math.min(f.trace, f.talk) - 3.9, camps: f.rift - 5, guest: Math.max(f.stir, f.open) - 5.4, cycle: land.water ? (f.clock >= 2 && f.clock <= 4 ? 0.7 : -0.4) + (f.stir <= 2 ? 0.5 : 0) - 0.5 : -9 };
+    const devices = Object.keys(dScore).map((k) => [k, dScore[k] + (R() - 0.5) * 0.6]).filter((x) => x[1] > 0).sort((a, b) => b[1] - a[1]).slice(0, 2).map((x) => x[0]);
+    note('상황 장치', ['clock', 'rift', 'gap', 'trace', 'talk', 'stir', 'open']);
+    // 인물
+    R = stage(seed, 'cast');
+    let n = clamp(4 + Math.round(f.bond / 3.5) + (f.gap <= 2 ? 1 : 0) + (R() < 0.35 ? 1 : 0) - (f.gap >= 6 ? 1 : 0), 4, 8);
+    const cores = D.CORES.slice(), jobs = D.JOBS.filter((j) => !j.land || land[j.land]), usedNames = new Set(), usedLooks = [], cast = [];
+    // 속은 결이 강하게 정한다 (시드는 누가 그 속을 갖는지, 이름과 얼굴을 정한다)
+    const fit = (aff) => Object.keys(aff).reduce((s, k) => s + aff[k] * ((f[k] - 3.5) / 1.1), 0);
+    const coreW = (c) => Math.exp(fit(c.aff));
+    const RN = IW.Names ? IW.Names.rng(hash(seed, 31)) : stage(seed, 'names');
+    for (let i = 0; i < n; i++) {
+      const Rc = stage(seed, 'core' + i), core = pickTop(Rc, cores, (c) => fit(c.aff) + (hash(seed, strHash(c.id)) % 100) / 400, 4); cores.splice(cores.indexOf(core), 1);
+      const Rj = stage(seed, 'job' + i), pool = i === n - 1 && devices.includes('guest') ? jobs.filter((j) => j.id === 'peddler') : jobs.filter((j) => j.id !== 'peddler');
+      const job = pickTop(Rj, pool.length ? pool : jobs, (j) => (j.likes.indexOf(core.id) >= 0 ? 3 - j.likes.indexOf(core.id) : 0) + (hash(p.seed, strHash(j.id)) % 100) / 300, 2); jobs.splice(jobs.indexOf(job), 1);
+      const Rs = stage(seed, 'style' + i), styles = D.STYLES.filter((s) => s.if(f)), style = pickW(Rs, styles.length ? styles : D.STYLES, (s) => 1 / (1 + 3 * cast.filter((c) => c.style === s.id).length));
+      const look = IW.People ? IW.People.pickDistinct(hash(seed, 500 + i), usedLooks) : hash(seed, 500 + i); usedLooks.push(look);
+      cast.push({ id: 'n' + i, slot: i, name: IW.Names ? IW.Names.pick(RN, usedNames) : '사람' + (i + 1), look, genes: IW.People ? IW.People.decode(look) : null,
+        core: core.id, dear: core.dear, want: core.want, fear: core.fear, job: job.id, jobName: job.name, work: job.place, style: style.id, styleSay: style.say,
+        react: core.react.map((r) => ({ id: r, when: D.REACT[r].when, does: D.REACT[r].does, say: D.REACT[r].say })), newcomer: job.id === 'peddler' && devices.includes('guest'),
+        // '그 후의 세계'용으로 미리 잡아 둔 칸 (1단계에서는 채우기만 하고 쓰지 않는다)
+        stage: 'adult', parents: [], partner: null, children: [], lived: [], twist: null });
+    }
+    note('사람 수와 속', ['bond', 'gap'].concat(FK));
+    // 반대로 당기는 결 → 모순을 가진 인물과 장소
+    const tensions = D.TENSIONS.filter((t) => t.if(f)).slice(0, 2);
+    tensions.forEach((t, i) => { const c = cast[Math.floor(stage(seed, 'twist' + i)() * cast.length)]; if (!c.twist) c.twist = t.twist; });
+    // 지난 일과 지금의 일 → 매듭
+    R = stage(seed, 'knots');
+    let K = clamp(Math.round(0.6 + (f.bond + f.trace + f.stir) / 6.5 + (R() - 0.5) * 0.7), 1, 4); if (devices.includes('sunset')) K = Math.min(K, 3); K = Math.min(K, Math.floor(cast.length / 2) + 1);
+    const pastPool = D.PASTS.filter((x) => (!x.land || land[x.land])), nowPool = D.NOWS.slice(), stories = [];
+    if (devices.includes('camps') && tk !== 'now') { const sp = pastPool.find((x) => x.id === 'split'); if (sp) { stories.push(sp); pastPool.splice(pastPool.indexOf(sp), 1); } }
+    const wantNow = tk === 'now' ? K : (f.trace <= 2 || R() < 0.25 ? 1 : 0);
+    while (stories.length < K) {
+      const useNow = (stories.filter((s) => s.want !== undefined || D.NOWS.includes(s)).length < wantNow && nowPool.length) || !pastPool.length;
+      const pool = useNow ? nowPool : pastPool; if (!pool.length) break;
+      const Rk = stage(seed, 'story' + stories.length), s = pickTop(Rk, pool, (x) => (useNow ? 0 : x.kinds.includes(tk) ? 2.5 : -1) + fit(PAFF[x.id] || {}) - (stories.some((y) => y.knot === x.knot) ? 3 : 0), 3);
+      pool.splice(pool.indexOf(s), 1); stories.push(s);
+    }
+    note('지난 일의 종류와 매듭 수', ['trace', 'bond', 'stir', 'clock']);
+    // 자리 앉히기: 덜 쓰인 사람부터. 속이 맞는 사람을 먼저
+    const used = {}; cast.forEach((c) => (used[c.id] = 0));
+    const relations = [], pasts = [], knots = [];
+    const addRel = (a, b, kind, from) => { if (a !== b && !relations.some((r) => r.a === a && r.b === b && r.kind === kind)) relations.push({ a, b, kind, from: from || null }); };
+    stories.forEach((s, si) => {
+      const Rr = stage(seed, 'roles' + si), need = s.three ? 3 : 2, roles = {}, taken = [];
+      for (let ri = 0; ri < need; ri++) {
+        const key = 'abc'[ri], wants = s.want && s.want[ri];
+        const c = pickW(Rr, cast.filter((x) => !taken.includes(x.id) && !(s.knot === 'newcomer' && ri === 0 && devices.includes('guest') && !x.newcomer && cast.some((y) => y.newcomer))), (x) => (wants && wants.includes(x.core) ? 6 : 1) * (used[x.id] === 0 ? 3 : used[x.id] === 1 ? 1 : 0.2) * (x.newcomer && s.knot !== 'newcomer' ? 0.2 : 1));
+        roles[key] = c.id; taken.push(c.id); used[c.id]++;
+      }
+      const nm = {}; Object.keys(roles).forEach((k) => (nm[k] = cast.find((c) => c.id === roles[k]).name));
+      const isNow = D.NOWS.includes(s);
+      const past = { id: (isNow ? 'h' : 'p') + si, tpl: s.id, now: isNow, roles, site: s.site, text: fill(s.text, nm), differ: !!s.differ || (!isNow && f.talk >= 5) };
+      pasts.push(past);
+      for (const [x, y, kind] of s.rel) addRel(roles[x], roles[y], kind, past.id);
+      Object.values(roles).forEach((id) => cast.find((c) => c.id === id).lived.push(past.id));
+      knots.push({ id: 'k' + si, type: s.knot, past: past.id, roles, site: s.site, say: fill(D.KNOTS[s.knot].say, nm), topic: fill(D.KNOTS[s.knot].topic, nm) });
+    });
+    // 일상 관계: 함께 겪은 일이 없어도 이어진 사람들
+    R = stage(seed, 'ties');
+    for (let i = 0; i < cast.length; i++) for (let j = i + 1; j < cast.length; j++) {
+      if (relations.some((r) => (r.a === cast[i].id && r.b === cast[j].id) || (r.a === cast[j].id && r.b === cast[i].id))) continue;
+      const x = R(); if (x < f.bond / 30) { addRel(cast[i].id, cast[j].id, 'friend'); } else if (x < f.bond / 30 + 0.1) { addRel(cast[i].id, cast[j].id, 'work'); } else if (f.rift >= 5 && x > 0.93) addRel(cast[i].id, cast[j].id, 'avoid');
+    }
+    if (cast.length >= 6) { const a = cast[1], b = cast[cast.length - 2]; addRel(a.id, b.id, 'kin'); }
+    note('일상 관계', ['bond', 'rift']);
+
+    // ---------- 장소 ----------
+    const places = [], P = (kind, why2, owner) => { let pl = places.find((x) => x.kind === kind && kind !== 'house'); if (!pl) { pl = { id: 'pl' + places.length, kind, name: D.PLACES[kind].name, role: D.PLACES[kind].role, why: [], owners: [] }; places.push(pl); } if (why2) pl.why.push(why2); if (owner && !pl.owners.includes(owner)) pl.owners.push(owner); return pl; };
+    const common = P(spark === 'together' || f.bond >= 5 ? 'table' : knots.some((k) => k.type === 'dispute') ? 'square' : 'well', '사람들이 모이는 곳');
+    cast.forEach((c) => { c.workAt = P(c.work, c.name + '의 일터', c.id).id; });
+    // 집: 사이가 가까우면 한 덩어리, 멀면 따로
+    const liveIn = cast.filter((c) => ['craft', 'ownway'].includes(c.core) || f.bond <= 1);
+    const homers = cast.filter((c) => !liveIn.includes(c));
+    liveIn.forEach((c) => (c.homeAt = c.workAt));
+    if (f.gap <= 3) homers.forEach((c) => (c.homeAt = P('homes', '집들이 붙어 있다', c.id).id));
+    else homers.forEach((c, i) => { const kin = relations.find((r) => r.kind === 'kin' && r.a === c.id), other = kin && cast.find((x) => x.id === kin.b); if (other && other.homeAt && other.homeAt !== other.workAt) { c.homeAt = other.homeAt; return; } if (f.gap >= 6 || i % 2 === 0) { const pl = { id: 'pl' + places.length, kind: 'house', name: c.name + '의 ' + D.PLACES.house.name, role: 'life', why: ['집과 집 사이가 멀다'], owners: [c.id] }; places.push(pl); c.homeAt = pl.id; } else c.homeAt = P('homes', '몇 집은 붙어 있다', c.id).id; });
+    pasts.forEach((ps) => { ps.siteAt = P(ps.site, ps.now ? '지금 일이 벌어지는 곳' : '지난 일의 자국').id; });
+    const backs = [];
+    if (f.back >= 4) backs.push(P('backporch', '환한 곳 뒤의 조용한 곳'));
+    if (f.back >= 6) backs.push(P('backroom', '문을 닫으면 조용한 방'));
+    tensions.forEach((t) => { if (!D.PLACES[t.place].water || land.water) if (!D.PLACES[t.place].high || land.high) { const pl = P(t.place, '반대로 당기는 두 성질이 만나는 곳'); if (pl.role === 'back' && !backs.includes(pl)) backs.push(pl); } });
+    if (f.open >= 5 && land.high) P('ridge', '멀리 내려다보는 자리');
+    note('장소', ['gap', 'bond', 'back', 'open', 'trace']);
+
+    // ---------- 사건 그래프 ----------
+    const events = []; const pid = (id) => cast.find((c) => c.id === id);
+    const toolWays = D.VERB_WAYS[verb], allTool = [].concat(...Object.values(D.VERB_WAYS));
+    knots.forEach((k, ki) => {
+      const Rk = stage(seed, 'expand' + ki), KD = D.KNOTS[k.type], rules = KD.rules.filter((r) => !r.if || r.if(f));
+      const rule = pickW(Rk, rules, (r) => (r.if ? 7 : 1)); k.rule = KD.rules.indexOf(rule);
+      const ids = [];
+      rule.steps.forEach((st, i) => {
+        const [kind, whoKey, deps] = st, id = k.id + 'e' + i;
+        const who = whoKey && whoKey.length === 1 ? k.roles[whoKey] || k.roles.a : whoKey === 'ab' ? k.roles.a : null, whom = whoKey === 'ab' ? k.roles.b : kind === 'reveal' ? k.roles[whoKey] : null;
+        let place;
+        if (kind === 'trace' || kind === 'mend' || kind === 'wait' || kind === 'guard') place = pasts[ki].siteAt;
+        else if (kind === 'side') place = f.back >= 4 && backs.length ? backs[(ki + i) % backs.length].id : pid(who).workAt;
+        else if (kind === 'trust' || kind === 'follow') place = pid(who).workAt;
+        else if (kind === 'reveal') place = pid(whom).homeAt;
+        else if (kind === 'gather') place = common.id;
+        else if (kind === 'fetch') { const others = places.filter((pl) => pl.id !== pasts[ki].siteAt && pl.id !== common.id && pl.role !== 'back'); place = others[Math.floor(Rk() * others.length)].id; }
+        else place = f.bond >= 4 ? common.id : pasts[ki].siteAt;
+        const nm = { who: who ? pid(who).name : '', whom: whom ? pid(whom).name : (who && kind === 'reveal' ? pid(who).name : ''), site: places.find((pl) => pl.id === place).name, topic: k.topic };
+        const ev = { id, knot: k.id, kind, who: kind === 'reveal' ? null : who, whom, place, pre: (deps || []).map((d) => ({ ev: k.id + 'e' + d })), title: fill(D.PIECES[kind].title, nm), ways: [], opts: null };
+        if (kind === 'choose') {
+          ev.opts = rule.ends.map((e) => { const E = D.ENDS[e], m = {}; Object.keys(k.roles).forEach((x) => (m[x] = pid(k.roles[x]).name)); return { id: e, say: fill(E.say, m), rel: E.rel.map(([x, y, d]) => [x === 'p' ? 'player' : k.roles[x] || k.roles.a, y === 'p' ? 'player' : k.roles[y] || k.roles.b, d]), tag: E.tag, map: E.map || null }; });
+        } else {
+          for (const [w, need, leaves] of D.PIECES[kind].ways) {
+            if (allTool.includes(w) && !toolWays.includes(w)) continue; // 내 도구가 아닌 방법은 없다 → 도구가 다르면 풀이가 달라진다
+            if (need === 'push' && f.push < 3) continue; if (need === 'bond' && f.bond < 3) continue; if (need === 'care' && f.care < 3) continue;
+            ev.ways.push({ by: w, say: D.WAY[w], tool: allTool.includes(w), need: need === 'trust' && f.talk >= 4 ? { rel: 1 } : need === 'gathered' ? { tag: 'gathered' } : null, leaves });
+          }
+          // 조건 없는 방법이 하나는 있어야 한다: 도구도 도움도 없으면 시간을 들여 혼자 한다
+          if (!ev.ways.some((w) => !w.need)) ev.ways.push({ by: 'slow', say: D.WAY.slow, tool: false, need: null, leaves: kind === 'mend' ? 'changed' : null, time: 2 });
+        }
+        events.push(ev); ids.push(id);
+      });
+      k.events = ids; k.choose = ids[ids.length - 1];
+    });
+    // 장치: 빈자리 — 첫 이야기는 무언가를 알고 난 뒤에야 나온다
+    if (devices.includes('absence')) knots.forEach((k, ki) => { if (ki === 0 && !events.some((e) => !e.pre.length && e.kind !== 'side')) return; /* 처음 손댈 일이 하나는 있어야 한다 */ const first = events.find((e) => e.knot === k.id && e.kind === 'side' && !e.pre.length); if (first) first.pre.push({ any: 'known' }); });
+    // 매듭끼리 얽기: 얼마나 얽히는지는 결이 정한다
+    R = stage(seed, 'tangle');
+    const tangles = clamp(Math.round((7 - f.open) / 3.2 + (f.rift >= 4 ? 0.6 : 0) + (R() - 0.5)), 0, knots.length - 1), locks = [];
+    for (let t = 0; t < tangles; t++) {
+      const A = knots[t], B = knots[t + 1], mid = events.filter((e) => e.knot === B.id && e.kind !== 'choose'), target = mid[Math.min(mid.length - 1, 1 + Math.floor(R() * Math.max(1, mid.length - 1)))];
+      const keyEv = events.filter((e) => e.knot === A.id && e.kind !== 'choose'); const key = t % 2 === 0 ? A.choose : keyEv[keyEv.length - 1].id;
+      if (t % 2 === 0 || !target) { (target || events.find((e) => e.id === B.choose)).pre.push({ ev: key, cross: true }); } else locks.push({ place: target.place, key });
+    }
+    note('매듭이 서로 얽힌 정도', ['open', 'rift']);
+
+    // ---------- 연결 ----------
+    R = stage(seed, 'links');
+    const links = [], linked = (a, b) => links.some((l) => (l.a === a && l.b === b) || (l.a === b && l.b === a));
+    const kindOf = (a, b) => { const A = D.PLACES[a.kind] || {}, B = D.PLACES[b.kind] || {}; if (a.kind === 'oldroad' || b.kind === 'oldroad') return 'overgrown'; if (a.role === 'back' || b.role === 'back') return 'gap'; if (A.water || B.water) return devices.includes('cycle') && R() < 0.5 ? 'ford' : R() < 0.6 ? 'bridge' : 'boat'; if (A.high || B.high) return 'stairs'; return f.gap <= 3 ? 'road' : R() < 0.5 ? 'lane' : 'path'; };
+    const link = (a, b, kind) => { if (a.id !== b.id && !linked(a.id, b.id)) links.push({ a: a.id, b: b.id, kind: kind || kindOf(a, b), lock: null }); };
+    const order = [common].concat(places.filter((pl) => pl !== common && pl.role !== 'back')), backsAll = places.filter((pl) => pl.role === 'back');
+    const twoSides = devices.includes('camps') || f.rift >= 6;
+    if (twoSides && order.length >= 5) { // 두 덩어리 + 건널 곳 하나
+      const sideA = [order[0]], sideB = [order[1]]; order.slice(2).forEach((pl, i) => (i % 2 ? sideB : sideA).push(pl));
+      [sideA, sideB].forEach((S) => S.slice(1).forEach((pl, i) => link(pl, S[f.gap <= 3 ? 0 : Math.floor(R() * (i + 1))])));
+      link(sideA[0], sideB[0], land.water ? 'bridge' : 'lane'); places.forEach((pl) => (pl.side = sideA.includes(pl) ? 'A' : sideB.includes(pl) ? 'B' : null));
+    } else order.slice(1).forEach((pl, i) => { // 한 곳에 길이 너무 많이 모이지 않게: 가운데는 다섯 갈래까지, 그다음은 가까운 곳에 붙는다
+      const dg = (x) => links.filter((l) => l.a === x.id || l.b === x.id).length, prev = order.slice(0, i + 1);
+      let parent = f.gap <= 2 ? order[0] : f.gap >= 5 ? order[i] : prev[Math.floor(R() * prev.length)];
+      if (dg(parent) >= (parent === order[0] ? 5 : 3)) { const free = prev.filter((x) => dg(x) < 3); parent = free.length ? free[Math.floor(R() * free.length)] : order[i]; }
+      link(pl, parent); });
+    backsAll.forEach((pl, i) => link(pl, i === 0 ? common : order[1 + Math.floor(R() * (order.length - 1))], 'gap'));
+    const loops = Math.round(f.open / 2.6 + (R() - 0.5) * 0.8); for (let i = 0, tries = 0; i < loops && tries < 30; tries++) { const a = order[Math.floor(R() * order.length)], b = order[Math.floor(R() * order.length)]; if (a !== b && !linked(a.id, b.id)) { link(a, b); i++; } }
+    // 잠긴 곳: 그 장소로 들어가는 길 하나를 잠근다 (다른 길이 있으면 돌아갈 수 있다 → 고리가 많은 세계는 덜 막힌다)
+    locks.forEach((lk) => { const l = links.find((x) => (x.a === lk.place || x.b === lk.place) && !x.lock); if (l) { l.lock = lk.key; l.kind = 'locked'; } });
+    // 시작 자리
+    const deg = (id) => links.filter((l) => l.a === id || l.b === id).length;
+    const distFrom = (from) => { const d = { [from]: 0 }, q = [from]; for (let i = 0; i < q.length; i++) for (const l of links) { const o = l.a === q[i] ? l.b : l.b === q[i] ? l.a : null; if (o && d[o] == null) { d[o] = d[q[i]] + 1; q.push(o); } } return d; };
+    let start = common.id;
+    if (devices.includes('guest') || f.talk >= 5 || f.gap >= 5) { const d = distFrom(common.id), far = order.filter((pl) => pl.role !== 'site').sort((a, b) => (d[b.id] || 0) - (d[a.id] || 0) || deg(a.id) - deg(b.id)); start = (far.find((pl) => !links.some((l) => l.lock && (l.a === pl.id || l.b === pl.id))) || common).id; }
+    note('장소의 연결과 시작 자리', ['gap', 'rift', 'open', 'talk']);
+    // 일과: 아침 집 → 낮 일터 → 저녁 모이는 곳/뒤편/집 (피하는 사람이 있으면 다른 곳)
+    cast.forEach((c, i) => { const avoid = relations.find((r) => r.a === c.id && (r.kind === 'rift' || r.kind === 'avoid')); c.routine = [{ t: '아침', at: c.homeAt }, { t: '낮', at: c.workAt }, { t: '저녁', at: avoid ? c.homeAt : f.bond >= 4 ? common.id : backs.length && (i % 2) ? backs[0].id : c.homeAt }]; c.now = c.want; });
+
+    const world = { v: 1, attempt, seed: p.seed, f, traceKind: tk, spark, tool: { verb, form: p.form }, land, devices, cast, relations, pasts, knots, events, places, links, start, tensions: tensions.map((t) => t.id),
+      end: { all: '모든 매듭이 어느 쪽으로든 정해지면 끝난다', sunset: devices.includes('sunset') ? 5 + knots.length * 3 : null }, why };
+    // 검사: 낙관적으로 모든 사건에 닿을 수 있는가. 안 되면 시도 번호를 올려 다시 만든다 (같은 꾸러미는 같은 시도 번호에 닿는다)
+    let bad = check(world);
+    // 서로를 막는 잠금·얽힘은 다시 만들지 않고 그 자리에서 푼다 (잠긴 길 → 열린 길, 그다음 매듭 사이 조건)
+    for (const l of links) { if (!bad.length) break; if (l.lock) { l.lock = null; l.kind = 'lane'; bad = check(world); } }
+    for (const ev of events) { if (!bad.length) break; if (ev.pre.some((x) => x.cross)) { ev.pre = ev.pre.filter((x) => !x.cross); bad = check(world); } }
+    if (bad.length && attempt < 6) return generate(p, attempt + 1);
+    world.problems = bad;
+    return world;
+  }
+
+  // 닿을 수 있는 장소 (잠긴 길은 열쇠 사건이 끝났을 때만)
+  function reach(world, done, cut) { const seen = new Set([world.start]), q = [world.start]; for (let i = 0; i < q.length; i++) for (const l of world.links) { if (l.lock && !done.has(l.lock)) continue; if (cut && cut.has(l)) continue; const o = l.a === q[i] ? l.b : l.b === q[i] ? l.a : null; if (o && !seen.has(o)) { seen.add(o); q.push(o); } } return seen; }
+  const preOK = (ev, done, tags) => ev.pre.every((pr) => (pr.ev ? done.has(pr.ev) : pr.any === 'known' ? done.size > 0 : true));
+  function check(world) {
+    const done = new Set(), tags = new Set(['gathered']); let moved = true;
+    while (moved) { moved = false; const r = reach(world, done); for (const ev of world.events) if (!done.has(ev.id) && r.has(ev.place) && preOK(ev, done, tags)) { done.add(ev.id); moved = true; } }
+    const bad = world.events.filter((e) => !done.has(e.id)).map((e) => '닿지 않는 사건 ' + e.id);
+    if (!world.knots.length) bad.push('매듭 없음');
+    const all = reach(world, new Set(world.events.map((e) => e.id))); world.places.forEach((pl) => { if (!all.has(pl.id)) bad.push('끊어진 장소 ' + pl.id); });
+    return bad;
+  }
+
+  // ---------- 모의 플레이: 같은 세계를 다르게 걷는 세 사람 ----------
+  const POLICY = {
+    helper: { name: '먼저 돕는 사람', ev: { trust: 5, side: 4, gather: 4, guard: 3, reveal: 2, trace: 2, fetch: 2, mend: 2, follow: 1, wait: 1, choose: 3 }, way: ['wrap', 'guard', 'errand', 'together', 'talk', 'call', 'carry', 'wait', 'tell', 'look', 'ask', 'walk', 'shine', 'leave', 'push', 'press'], opt: (o) => o.rel.reduce((s, r) => s + r[2], 0) + (o.tag === 'reconciled' ? 2 : 0) },
+    watcher: { name: '지켜보는 사람', ev: { trace: 5, follow: 5, wait: 4, side: 3, fetch: 2, trust: 1, reveal: 1, gather: 1, mend: 1, guard: 1, choose: 2 }, way: ['shine', 'look', 'wait', 'walk', 'leave', 'ask', 'talk', 'carry', 'errand', 'wrap', 'tell', 'call', 'together', 'guard', 'push', 'press'], opt: (o) => (o.tag == null ? 3 : o.tag === 'heard' || o.tag === 'helped' ? 2 : 0) - (o.map ? 1 : 0) },
+    pusher: { name: '밀어붙이는 사람', ev: { choose: 6, mend: 5, reveal: 5, gather: 3, fetch: 3, side: 2, trace: 2, guard: 2, trust: 1, follow: 1, wait: 0 }, way: ['push', 'press', 'tell', 'call', 'shine', 'walk', 'errand', 'talk', 'carry', 'together', 'look', 'ask', 'wrap', 'guard', 'leave', 'wait'], opt: (o) => (o.map ? 3 : 0) + (['changed', 'revealed', 'opened', 'confronted'].includes(o.tag) ? 2 : 0) },
+  };
+  function simulate(world, policyId) {
+    const P = POLICY[policyId]; P.way.includes('slow') || P.way.push('slow'); const done = new Set(), tags = new Set(), rel = {}, log = [], changes = [], ends = {}, gone = new Set(), cut = new Set(), blocked = {};
+    const rk = (a, b) => a + '>' + b, bump = (a, b, d) => { rel[rk(a, b)] = (rel[rk(a, b)] || 0) + d; };
+    let time = 0, guard = 0, pendingRumor = [];
+    const fire = (tag, around, evId) => { // 인물들의 기다리는 규칙이 번진다
+      if (!tag) return;
+      for (const c of world.cast) { if (gone.has(c.id)) continue; const related = around.includes(c.id) || world.relations.some((r) => r.a === c.id && around.includes(r.b));
+        for (const rc of c.react) { if (rc.when !== tag || !related || changes.some((x) => x.who === c.id && x.react === rc.id)) continue;
+          const ch = { who: c.id, name: c.name, react: rc.id, does: rc.does, after: evId }; changes.push(ch);
+          if (rc.does === 'blocks') { blocked[c.workAt] = c.id; } else if (rc.does === 'opens') { const l = world.links.find((x) => x.lock && !done.has(x.lock)); if (l) { done.add(l.lock + ':opened'); l._open = true; ch.link = l.a + '-' + l.b; } }
+          else if (rc.does === 'leaves') { gone.add(c.id); } else if (rc.does === 'warms') { delete blocked[c.workAt]; bump(c.id, 'player', 1); } else if (['visits', 'gives', 'gathers', 'helps'].includes(rc.does)) bump(c.id, 'player', 1); else if (rc.does === 'shuts' || rc.does === 'detours') bump(c.id, 'player', -1); } }
+    };
+    const limit = world.end.sunset || 60;
+    while (time < limit && guard++ < 200) {
+      const doneX = new Set([...done, ...world.links.filter((l) => l._open).map((l) => l.lock)]), r = reach(world, doneX, cut);
+      const avail = world.events.filter((e) => !done.has(e.id) && r.has(e.place) && preOK(e, done, tags) && !(e.who && gone.has(e.who)) && !(blocked[e.place] && e.who !== blocked[e.place]) && !ends[e.knot]);
+      if (!avail.length) break;
+      avail.sort((a, b) => (P.ev[b.kind] || 0) - (P.ev[a.kind] || 0) || (a.id < b.id ? -1 : 1));
+      let acted = false;
+      for (const ev of avail) {
+        if (ev.kind === 'choose') {
+          const o = ev.opts.slice().sort((a, b) => P.opt(b) - P.opt(a) || (a.id < b.id ? -1 : 1))[0];
+          done.add(ev.id); ends[ev.knot] = o.id; o.rel.forEach(([a, b, d]) => bump(a, b, d)); if (o.tag) tags.add(o.tag);
+          if (o.map) { changes.push({ map: o.map, after: ev.id }); if (o.map.link === 'cut') { const k = world.knots.find((x) => x.id === ev.knot), site = world.pasts.find((x) => x.id === k.past).siteAt, l = world.links.find((x) => x.a === site || x.b === site); if (l) cut.add(l); } if (o.map.npc) gone.add(world.knots.find((x) => x.id === ev.knot).roles.a); }
+          log.push({ ev: ev.id, kind: 'choose', pick: o.id }); const k = world.knots.find((x) => x.id === ev.knot); (world.devices.includes('rumor') ? pendingRumor : []).push([time + 3, o.tag, Object.values(k.roles), ev.id]); if (!world.devices.includes('rumor')) fire(o.tag, Object.values(k.roles), ev.id);
+          acted = true; break;
+        }
+        const way = P.way.map((w) => ev.ways.find((x) => x.by === w)).find((w) => w && (!w.need || (w.need.rel ? (rel[rk(ev.who, 'player')] || 0) >= w.need.rel : tags.has(w.need.tag))));
+        if (!way) continue;
+        done.add(ev.id); if (way.leaves) tags.add(way.leaves); if (ev.who) bump(ev.who, 'player', way.leaves === 'forced' ? -1 : way.leaves === 'helped' || way.leaves === 'heard' ? 1 : 0);
+        log.push({ ev: ev.id, kind: ev.kind, by: way.by }); if (way.by === 'wait') time++; if (way.time) time += way.time;
+        fire(way.leaves, [ev.who, ev.whom].filter(Boolean), ev.id); acted = true; break;
+      }
+      time++;
+      pendingRumor = pendingRumor.filter(([t, tag, around, id]) => { if (t <= time) { fire(tag, around, id); return false; } return true; });
+      if (!acted) { if (!avail.some((e) => e.kind !== 'choose')) break; // 할 수 있는 방법이 없다 → 하루를 보낸다(믿음이 필요한 대화)
+        const stuck = avail.find((e) => e.who); if (stuck) bump(stuck.who, 'player', 1); }
+    }
+    world.links.forEach((l) => delete l._open);
+    world.knots.forEach((k) => { if (!ends[k.id]) ends[k.id] = [...gone].some((id) => Object.values(k.roles).includes(id)) ? '(당사자가 떠남)' : world.end.sunset && time >= limit ? '(해가 져서 못 함)' : '(남겨 둠)'; });
+    const relSum = {}; world.cast.forEach((c) => (relSum[c.name] = rel[rk(c.id, 'player')] || 0));
+    return { policy: P.name, order: log, ends, changes, time, relToPlayer: relSum, gone: [...gone] };
+  }
+
+  // ---------- 구조 지문: 이름·색을 지우고 비교한다 ----------
+  function signature(w) {
+    const degs = w.places.map((pl) => w.links.filter((l) => l.a === pl.id || l.b === pl.id).length).sort((a, b) => a - b);
+    return { devices: w.devices.slice().sort(), cores: w.cast.map((c) => c.core).sort(), jobs: w.cast.map((c) => c.job).sort(), rels: w.relations.map((r) => r.kind).sort(), pasts: w.pasts.map((x) => x.tpl).sort(), knots: w.knots.map((k) => k.type + '#' + k.rule).sort(),
+      places: w.places.map((pl) => pl.kind).sort(), links: w.links.map((l) => l.kind).sort(), degs, evSeq: w.events.map((e) => e.kind), cross: w.events.reduce((s, e) => s + e.pre.filter((x) => x.cross).length, 0) + w.links.filter((l) => l.lock).length,
+      startRole: w.places.find((pl) => pl.id === w.start).kind, n: { cast: w.cast.length, places: w.places.length, links: w.links.length, events: w.events.length, knots: w.knots.length } };
+  }
+  const jac = (a, b) => { const A = a.slice(), B = b.slice(); let inter = 0; for (const x of A) { const i = B.indexOf(x); if (i >= 0) { inter++; B.splice(i, 1); } } const uni = a.length + b.length - inter; return uni ? 1 - inter / uni : 0; };
+  const edit = (a, b) => { const m = a.length, n = b.length, d = Array.from({ length: m + 1 }, (_, i) => [i]); for (let j = 1; j <= n; j++) d[0][j] = j; for (let i = 1; i <= m; i++) for (let j = 1; j <= n; j++) d[i][j] = Math.min(d[i - 1][j] + 1, d[i][j - 1] + 1, d[i - 1][j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1)); return Math.max(m, n) ? d[m][n] / Math.max(m, n) : 0; };
+  function distance(a, b) { // 0 = 같음, 1 = 완전히 다름. 이름·색·문장은 보지 않는다
+    const d = { 인물의속: jac(a.cores, b.cores), 하는일: jac(a.jobs, b.jobs), 관계: jac(a.rels, b.rels), 지난일: jac(a.pasts, b.pasts), 매듭과펼침: jac(a.knots, b.knots), 사건순서: edit(a.evSeq, b.evSeq), 장소: jac(a.places, b.places), 연결: (jac(a.links, b.links) + edit(a.degs, b.degs)) / 2, 장치: jac(a.devices, b.devices) };
+    d.평균 = Object.values(d).reduce((s, v) => s + v, 0) / 9; return d;
+  }
+  const describeFacets = (f) => FK.filter((k) => f[k] <= 1 || f[k] >= 6).map((k) => D.FACETS[k][f[k] >= 6 ? 1 : 0]);
+
+  IW.World6 = { facetsFrom, encode, decode, generate, check, reach, simulate, signature, distance, describeFacets, POLICY, VERBS, hash, strHash };
+})(globalThis);
+
 // ---- src/gen4/iw4.js ----
 /* IW4 — "답이 이야기의 모양을 정하는 세계" (시제품: 엔진 2개)
    질문마다 세계 안의 역할이 하나씩 있다. 같은 역할을 두 질문이 나눠 갖지 않는다.
@@ -15623,6 +16218,175 @@ body.touch .pad {
   IW.Sound = { _reset, init, play, get state() { return ctx ? ctx.state : 'none'; }, ambient, setEnabled, SOUNDS, get enabled() { return enabled; }, get running() { return !!ctx && ctx.state === 'running'; } };
 })(globalThis);
 
+// ---- src/audio/birth.js ----
+/* 세계가 태어나는 장면 — 첫 데모 (#birth)
+   - 소리는 전부 브라우저에서 직접 합성한다(Web Audio). 음원 파일·기존 게임의 음악·효과음을 쓰지 않는다.
+   - 세계의 성질(결)에서 음계·음색·빠르기·짧은 주제(다섯 음)를 정한다. 같은 꾸러미 = 같은 음악.
+   - 화면과 소리는 하나의 시계(오디오 시계)로 맞춘다: 소리는 미리 예약하고, 화면은 매 프레임 "지금 오디오 시각"을 읽어 그린다.
+   - 건너뛰기, 소리 끄기, 짧은 판(두 번째부터), 첫 입력 뒤에만 소리 켜기(브라우저 규칙), WAV로 저장(듣기 평가·공유용). */
+(function (g) {
+  const IW = (g.IW = g.IW || {});
+  const hash = (a, b) => { let h = (Math.imul(a | 0, 374761393) + Math.imul(b | 0, 668265263)) | 0; h = Math.imul(h ^ (h >>> 13), 1274126177); h ^= h >>> 16; return h >>> 0; };
+  const rng = (seed) => { let s = (seed >>> 0) || 1; return () => { s ^= s << 13; s >>>= 0; s ^= s >>> 17; s ^= s << 5; s >>>= 0; return s / 4294967296; }; };
+  const SCALES = { bright: [0, 2, 4, 7, 9], soft: [0, 2, 5, 7, 9], dusk: [0, 3, 5, 7, 10], dorian: [0, 2, 3, 5, 7, 9, 10], open: [0, 2, 4, 6, 7, 9, 11] };
+  const SCALE_KO = { bright: '밝은 다섯 음', soft: '맑고 빈 다섯 음', dusk: '어스름한 다섯 음', dorian: '서늘하게 움직이는 일곱 음', open: '멀리 트인 일곱 음' };
+  const TIMBRE_KO = { bell: '맑은 종', string: '부드러운 현', metal: '금속성 울림', warm: '따뜻한 신시사이저' };
+  const RHYTHM_KO = { calm: '느긋함', lively: '경쾌함', tense: '긴장감', grand: '장엄함' };
+
+  // 꾸러미(시드 + 결) → 음악 주제. 무작위 음 나열이 아니라 규칙으로 만든다
+  function theme(p) {
+    const f = p.f, R = rng(hash(p.seed, 9091));
+    const sc = { bright: f.bond + f.care - f.trace * 0.5, soft: f.gap + (7 - f.clock) - f.rift * 0.5, dusk: f.trace + f.talk + f.rift * 0.5 - f.bond * 0.5, dorian: f.stir + f.push, open: f.open * 1.6 + f.stir * 0.4 };
+    const scale = Object.keys(sc).sort((a, b) => sc[b] - sc[a])[0];
+    const tb = { bell: f.talk + f.gap, string: f.bond + f.care, metal: f.push + f.clock, warm: f.back + f.stir };
+    const timbre = Object.keys(tb).sort((a, b) => tb[b] - tb[a])[0];
+    const energy = (f.clock + f.push + f.stir) / 21, bpm = Math.round(76 + energy * 64);
+    const rhythm = f.clock >= 5 ? 'tense' : energy > 0.55 ? 'lively' : f.trace + f.open >= 9 ? 'grand' : 'calm';
+    const root = 45 + [0, 2, 3, 5, 7, 8, 10][hash(p.seed, 17) % 7]; // 라~솔 사이의 으뜸음
+    // 주제 다섯 음: 음계 안에서만, 큰 도약 뒤에는 반대쪽으로 한 칸, 끝은 으뜸음이나 5도
+    const S = SCALES[scale], n = S.length, deg = [[0, 2, 4][Math.floor(R() * 3)]]; let leapAt = 1 + Math.floor(R() * 2), last = 0;
+    for (let i = 1; i < 4; i++) { let step; if (i === leapAt) step = (R() < 0.6 ? 1 : -1) * (2 + Math.floor(R() * 2)); else if (Math.abs(last) >= 2) step = last > 0 ? -1 : 1; else step = R() < 0.6 ? 1 : -1; if (deg[i - 1] + step < -1) step = Math.abs(step); deg.push(deg[i - 1] + step); last = step; }
+    const endOn = [0, n, S.indexOf(7) >= 0 ? S.indexOf(7) : 0].sort((a, b) => Math.abs(a - deg[3]) - Math.abs(b - deg[3]))[0]; deg.push(endOn);
+    const midi = (d) => root + 12 + S[((d % n) + n) % n] + 12 * Math.floor(d / n);
+    const lens = { calm: [2, 1, 1, 2, 4], lively: [1, 1, 2, 1, 3], tense: [1, 1, 1, 1, 4], grand: [3, 1, 2, 2, 4] }[rhythm];
+    return { scale, timbre, rhythm, bpm, root, degrees: deg, notes: deg.map(midi), lens, chord: [0, S.indexOf(7) >= 0 ? S.indexOf(7) : 2, n, n + (scale === 'dusk' || scale === 'dorian' ? 1 : 2), n + (S.indexOf(7) >= 0 ? S.indexOf(7) : 2)].map(midi).map((m) => m - 12),
+      say: `${SCALE_KO[scale]} · ${TIMBRE_KO[timbre]} · ${RHYTHM_KO[rhythm]} (♩=${bpm})` };
+  }
+  const hz = (m) => 440 * Math.pow(2, (m - 69) / 12);
+
+  // ---------- 악기 ----------
+  function voice(ctx, out, kind, freq, t, dur, vel) {
+    const gn = ctx.createGain(); gn.connect(out); const stop = t + dur + 0.05;
+    const osc = (type, fr, det) => { const o = ctx.createOscillator(); o.type = type; o.frequency.setValueAtTime(fr, t); if (det) o.detune.setValueAtTime(det, t); o.start(t); o.stop(stop + 1.6); return o; };
+    if (kind === 'bell') { // 맑은 종: 기음 + 어긋난 배음, 빠르게 사그라든다
+      for (const [mul, a] of [[1, 1], [2.76, 0.35], [5.4, 0.18]]) { const o = osc('sine', freq * mul), g1 = ctx.createGain(); g1.gain.value = a; o.connect(g1); g1.connect(gn); }
+      gn.gain.setValueAtTime(0, t); gn.gain.linearRampToValueAtTime(vel * 0.5, t + 0.005); gn.gain.exponentialRampToValueAtTime(0.0008, t + Math.max(0.5, dur * 1.8));
+    } else if (kind === 'string') { // 부드러운 현: 톱니파 둘 + 낮은 통과, 천천히 일어난다
+      const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.setValueAtTime(900, t); lp.frequency.linearRampToValueAtTime(2400, t + dur * 0.6); lp.connect(gn);
+      osc('sawtooth', freq, -7).connect(lp); osc('sawtooth', freq, 7).connect(lp);
+      gn.gain.setValueAtTime(0, t); gn.gain.linearRampToValueAtTime(vel * 0.22, t + Math.min(0.12, dur * 0.4)); gn.gain.setValueAtTime(vel * 0.22, t + dur * 0.7); gn.gain.linearRampToValueAtTime(0, t + dur + 0.25);
+    } else if (kind === 'metal') { // 금속성: 네모파 + 띠 통과 + 높은 배음 한 줄
+      const bp = ctx.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = freq * 2.5; bp.Q.value = 1.2; bp.connect(gn);
+      osc('square', freq).connect(bp); const o2 = osc('sine', freq * 3.01), g2 = ctx.createGain(); g2.gain.value = 0.3; o2.connect(g2); g2.connect(gn);
+      gn.gain.setValueAtTime(0, t); gn.gain.linearRampToValueAtTime(vel * 0.4, t + 0.004); gn.gain.exponentialRampToValueAtTime(0.0008, t + Math.max(0.35, dur * 1.3));
+    } else { // 따뜻한 신시: 세모파 + 살짝 어긋난 사인
+      osc('triangle', freq).connect(gn); const o2 = osc('sine', freq * 2, 5), g2 = ctx.createGain(); g2.gain.value = 0.25; o2.connect(g2); g2.connect(gn);
+      gn.gain.setValueAtTime(0, t); gn.gain.linearRampToValueAtTime(vel * 0.42, t + 0.03); gn.gain.setValueAtTime(vel * 0.36, t + dur * 0.6); gn.gain.linearRampToValueAtTime(0, t + dur + 0.2);
+    }
+  }
+  function noise(ctx) { const b = ctx.createBuffer(1, ctx.sampleRate, ctx.sampleRate), d = b.getChannelData(0); let s = 12345; for (let i = 0; i < d.length; i++) { s ^= s << 13; s >>>= 0; s ^= s >>> 17; s ^= s << 5; s >>>= 0; d[i] = s / 2147483648 - 1; } return b; }
+
+  // ---------- 시간표: 소리를 예약하고, 화면이 따라갈 신호(cue) 목록을 돌려준다 ----------
+  function schedule(ctx, out, th, t0, opts) {
+    opts = opts || {}; const short = !!opts.short, cues = [], nb = noise(ctx), T = (x) => t0 + x;
+    const bus = ctx.createGain(); bus.gain.value = 0.6; const comp = ctx.createDynamicsCompressor(); comp.threshold.value = -14; comp.ratio.value = 6; comp.attack.value = 0.003; comp.release.value = 0.2; const trim = ctx.createGain(); trim.gain.value = 0.8; bus.connect(comp); comp.connect(trim); trim.connect(out); // 겹쳐도 깨지지 않게: 누르개 + 여유
+    const hit = (start, len, type, f0, f1, gain) => { const s = ctx.createBufferSource(); s.buffer = nb; s.loop = true; const fl = ctx.createBiquadFilter(); fl.type = type; fl.frequency.setValueAtTime(f0, start); if (f1) fl.frequency.exponentialRampToValueAtTime(f1, start + len); const g1 = ctx.createGain(); g1.gain.setValueAtTime(0.0001, start); g1.gain.exponentialRampToValueAtTime(gain, start + (f1 && f1 > f0 ? len : 0.005)); g1.gain.exponentialRampToValueAtTime(0.0001, start + len + (f1 && f1 > f0 ? 0.02 : 0)); s.connect(fl); fl.connect(g1); g1.connect(bus); s.start(start); s.stop(start + len + 0.1); };
+    const A = short ? 0.0 : 0.7, B = short ? 0.9 : 3.3, C = short ? 1.5 : 5.0, HIT = short ? 1.7 : 5.25, END = HIT + 2.4;
+    // ① 낮은 울림: 세계의 으뜸음
+    const dr = ctx.createOscillator(), dg = ctx.createGain(); dr.type = 'sine'; dr.frequency.setValueAtTime(hz(th.root - 12), T(0)); dg.gain.setValueAtTime(0, T(0)); dg.gain.linearRampToValueAtTime(0.32, T(Math.min(1.2, C * 0.4))); dg.gain.setValueAtTime(0.32, T(C - 0.05)); dg.gain.linearRampToValueAtTime(0, T(C + 0.03)); dr.connect(dg); dg.connect(bus); dr.start(T(0)); dr.stop(T(C + 0.1));
+    cues.push({ t: 0, name: 'hum' });
+    // ② 답 열 개가 조각이 된다: 주제의 음이 하나씩, 간격은 점점 짧아지고 음은 올라간다
+    const N = short ? 5 : 10; let x = A;
+    for (let i = 0; i < N; i++) { const gap = short ? 0.17 : 0.4 - i * 0.027, note = th.notes[i % 5] + (i >= 5 ? 12 : 0); voice(ctx, bus, th.timbre, hz(note), T(x), gap * 1.4, 0.55 + i * 0.03); cues.push({ t: x, name: 'piece', i }); x += gap; }
+    // ③ 조각이 맞춰진다: 박자가 붙고 화음이 한 층씩 쌓인다. 올라가는 바람 소리
+    if (!short) { const beat = 60 / th.bpm / 2, layers = th.chord; let b = B, k = 0; while (b < C - 0.05) { hit(T(b), 0.03, 'highpass', 6000, 0, 0.12 + 0.02 * k); if (k % 2 === 0 && k / 2 < layers.length) { voice(ctx, bus, 'string', hz(layers[k / 2]), T(b), C - b, 0.5); cues.push({ t: b, name: 'layer', i: k / 2 }); } b += beat * (k > 8 ? 0.5 : 1); k++; } hit(T(B), C - B, 'bandpass', 300, 5200, 0.16); }
+    cues.push({ t: B, name: 'assemble' });
+    // ④ 한 박 멈춤 → ⑤ 탄생: 낮은 타격 + 숨 + 넓은 화음 + 주제 한 번
+    cues.push({ t: C, name: 'hush' });
+    const th2 = ctx.createOscillator(), tg = ctx.createGain(); th2.type = 'sine'; th2.frequency.setValueAtTime(140, T(HIT)); th2.frequency.exponentialRampToValueAtTime(hz(th.root - 24), T(HIT + 0.35)); tg.gain.setValueAtTime(0.0001, T(HIT)); tg.gain.exponentialRampToValueAtTime(0.9, T(HIT + 0.008)); tg.gain.exponentialRampToValueAtTime(0.0001, T(HIT + 1.1)); th2.connect(tg); tg.connect(bus); th2.start(T(HIT)); th2.stop(T(HIT + 1.2));
+    hit(T(HIT), 0.5, 'lowpass', 5000, 400, 0.35);
+    th.chord.forEach((m, i) => { voice(ctx, bus, 'string', hz(m), T(HIT), 2.2, 0.55); voice(ctx, bus, th.timbre, hz(m + 12), T(HIT + i * 0.012), 1.6, 0.4); });
+    cues.push({ t: HIT, name: 'birth' });
+    const unit = Math.max(0.13, Math.min(0.19, 60 / th.bpm / 2)); let mt = HIT + 0.3; th.notes.forEach((m, i) => { voice(ctx, bus, th.timbre, hz(m + 12), T(mt), unit * th.lens[i] * 0.95, 0.7); cues.push({ t: mt, name: 'motif', i }); mt += unit * th.lens[i]; });
+    cues.push({ t: HIT + 0.9, name: 'name' });
+    // ⑥ 마지막 음이 남는다 → 그 세계의 배경음 첫 음으로 이어 줄 음높이를 돌려준다
+    voice(ctx, bus, 'warm', hz(th.notes[4]), T(mt), 1.8, 0.35);
+    return { cues: cues.sort((a, b) => a.t - b.t), duration: Math.max(END, mt + 1.0), tail: th.notes[4], hitAt: HIT, bus };
+  }
+
+  // ---------- WAV ----------
+  function toWav(buf) { const ch = Math.min(2, buf.numberOfChannels), n = buf.length, dv = new DataView(new ArrayBuffer(44 + n * ch * 2)); const W = (o, s) => { for (let i = 0; i < s.length; i++) dv.setUint8(o + i, s.charCodeAt(i)); };
+    W(0, 'RIFF'); dv.setUint32(4, 36 + n * ch * 2, true); W(8, 'WAVEfmt '); dv.setUint32(16, 16, true); dv.setUint16(20, 1, true); dv.setUint16(22, ch, true); dv.setUint32(24, buf.sampleRate, true); dv.setUint32(28, buf.sampleRate * ch * 2, true); dv.setUint16(32, ch * 2, true); dv.setUint16(34, 16, true); W(36, 'data'); dv.setUint32(40, n * ch * 2, true);
+    const cs = []; for (let c = 0; c < ch; c++) cs.push(buf.getChannelData(c)); let o = 44; for (let i = 0; i < n; i++) for (let c = 0; c < ch; c++) { const v = Math.max(-1, Math.min(1, cs[c][i])); dv.setInt16(o, v < 0 ? v * 32768 : v * 32767, true); o += 2; } return dv.buffer; }
+  async function render(p, opts) { const th = theme(p), OC = g.OfflineAudioContext || g.webkitOfflineAudioContext, probe = { duration: opts && opts.short ? 5 : 9 }; const ctx = new OC(2, 44100 * probe.duration, 44100); const s = schedule(ctx, ctx.destination, th, 0.05, opts); const buf = await ctx.startRendering(); return { buf, theme: th, cues: s.cues, hitAt: s.hitAt + 0.05 }; }
+
+  // ---------- 데모 화면 ----------
+  const PRESETS = [
+    ['북적이는 물가 마을', { dist: 'near', expr: 'deflect', conf: 'understand', val: 'people', fear: 'loss', cope: 'reach', joy: 'together', mask: 'bright', regret: 'unsaid', wish: 'safe' }, 1001],
+    ['띄엄띄엄한 골짜기', { dist: 'far', expr: 'later', conf: 'withdraw', val: 'principle', fear: 'stuck', cope: 'guard', joy: 'immersed', mask: 'calm', regret: 'missed', wish: 'free' }, 2002],
+    ['둘로 갈린 기슭', { dist: 'slow', expr: 'open', conf: 'confront', val: 'heart', fear: 'disliked', cope: 'brood', joy: 'helpful', mask: 'unknown', regret: 'ended', wish: 'understood' }, 3003],
+    ['날짜를 세는 언덕', { dist: 'open', expr: 'mask', conf: 'endure', val: 'future', fear: 'fail', cope: 'reach', joy: 'new', mask: 'strong', regret: 'none', wish: 'grow' }, 4004],
+  ];
+  const TILE = ['#6fa35a', '#5aa0c8', '#d9c79a', '#b0684f', '#7f9a6a', '#e6d6a6', '#9fc0cf', '#c9ccd1', '#8c6f4e', '#f0d36b'];
+  let live = null, muted = false, played = 0;
+  function titleOf(w) { const common = w.places[0].name, site = (w.places.find((p) => p.role === 'site') || w.places[1]).name; return `${common}과 ${site}`.replace(/([가-힣])과 /, (m, c) => c + (((c.charCodeAt(0) - 0xac00) % 28) ? '과 ' : '와 ')); }
+  function stop() { if (!live) return; cancelAnimationFrame(live.raf); try { live.gain.gain.cancelScheduledValues(0); live.gain.gain.setTargetAtTime(0, live.ctx.currentTime, 0.03); } catch (_) {} const c = live.ctx; setTimeout(() => { try { c.close(); } catch (_) {} }, 400); live = null; }
+  // 한 번 재생. 누르는 동작 안에서 불러야 소리가 난다(브라우저 규칙). done(건너뛰었는가)
+  function play(canvas, p, opts, done) {
+    stop(); opts = opts || {};
+    const AC = g.AudioContext || g.webkitAudioContext, ctx = new AC(), gain = ctx.createGain(); gain.gain.value = muted ? 0 : 0.9; gain.connect(ctx.destination);
+    if (ctx.state === 'suspended' && ctx.resume) ctx.resume();
+    const th = theme(p), t0 = ctx.currentTime + 0.12, s = schedule(ctx, gain, th, t0, opts), w = IW.World6 ? IW.World6.generate(p) : null, name = opts.name || (w ? titleOf(w) : '');
+    const R = rng(hash(p.seed, 4242)), c = canvas.getContext('2d'), fired = [], pieces = [];
+    for (let i = 0; i < 10; i++) pieces.push({ a: R() * Math.PI * 2, r: 0.32 + R() * 0.14, col: TILE[(hash(p.seed, i) + i) % TILE.length], gx: (i % 5) - 2, gy: Math.floor(i / 5) - 0.5 });
+    // 대표 풍경(임시): 이 세계의 장소 수와 땅에서 만든 작은 픽셀 지도. 2단계에서 실제 도착 풍경으로 바꾼다
+    const cells = []; { const n = w ? w.places.length : 10, Rm = rng(hash(p.seed, 99)); let x = 0, y = 0; const seen = new Set(); for (let i = 0; i < n * 9; i++) { const k = x + ',' + y; if (!seen.has(k)) { seen.add(k); cells.push([x, y, Rm() < (w && w.land.water ? 0.2 : 0.05) ? 1 : Rm() < 0.18 ? 3 : Rm() < 0.25 ? 2 : 0]); } const d = Math.floor(Rm() * 4); x += [1, -1, 0, 0][d]; y += [0, 0, 1, -1][d]; x = Math.max(-9, Math.min(9, x)); y = Math.max(-5, Math.min(5, y)); } }
+    live = { ctx, gain, raf: 0, s, th, fired, skipped: false, drift: 0, canvas };
+    const draw = () => {
+      if (!live || live.ctx !== ctx) return;
+      const t = ctx.currentTime - t0, W = canvas.width, H = canvas.height, u = Math.min(W, H) / 100, cx = W / 2, cy = H * 0.46;
+      for (const q of s.cues) if (!q.done && t >= q.t) { q.done = true; fired.push({ name: q.name, i: q.i, at: t, late: t - q.t }); live.drift = Math.max(live.drift, t - q.t); }
+      const tOf = (n, i) => { const q = s.cues.find((x) => x.name === n && (i == null || x.i === i)); return q ? q.t : 1e9; };
+      const B = tOf('assemble'), C = tOf('hush'), HIT = tOf('birth'), NAME = tOf('name');
+      c.fillStyle = '#000'; c.fillRect(0, 0, W, H);
+      if (t < C) {
+        const hum = Math.min(1, Math.max(0, t / 1.2)); c.fillStyle = `rgba(255,255,255,${0.05 * hum + 0.02 * Math.sin(t * 6)})`; c.fillRect(cx - 18 * u, cy - 0.3 * u, 36 * u, 0.6 * u);
+        pieces.forEach((pc, i) => { const born = tOf('piece', i >= (opts.short ? 5 : 10) ? 0 : i); if (t < born) return; const age = t - born, k = t < B ? 0 : Math.min(1, (t - B) / Math.max(0.2, C - B)); const e = k * k * (3 - 2 * k);
+          const ox = cx + Math.cos(pc.a + age * 0.7) * pc.r * 100 * u * (1 - e * 0.99) + pc.gx * 7 * u * e, oy = cy + Math.sin(pc.a + age * 0.7) * pc.r * 60 * u * (1 - e * 0.99) + pc.gy * 7 * u * e, sz = (3 + 3 * e + Math.max(0, 0.25 - age) * 14) * u;
+          c.fillStyle = pc.col; c.fillRect(Math.round(ox - sz / 2), Math.round(oy - sz / 2), Math.round(sz), Math.round(sz)); });
+      } else if (t < HIT) { /* 한 박 멈춤: 까만 화면 */ } else {
+        const a = Math.min(1, (t - HIT) / 0.5), flash = Math.max(0, 1 - (t - HIT) / 0.25), cs = 4.2 * u;
+        for (const [x, y, k] of cells) { c.fillStyle = ['#6fa35a', '#5aa0c8', '#d9c79a', '#b0684f'][k]; c.globalAlpha = a; c.fillRect(Math.round(cx + x * cs - cs / 2), Math.round(cy + y * cs - cs / 2), Math.ceil(cs), Math.ceil(cs)); }
+        c.globalAlpha = 1; if (flash > 0) { c.fillStyle = `rgba(255,255,255,${flash})`; c.fillRect(0, 0, W, H); }
+        s.cues.filter((q) => q.name === 'motif' && q.done).forEach((q) => { const age = t - q.t; if (age < 0.5) { c.fillStyle = `rgba(255,255,255,${0.9 - age * 1.8})`; c.fillRect(cx + (q.i - 2) * 9 * u - 1.5 * u, cy + 30 * u, 3 * u, 3 * u); } });
+        if (t >= NAME) { const na = Math.min(1, (t - NAME) / 0.4); c.globalAlpha = na; c.fillStyle = '#fff'; c.textAlign = 'center'; c.font = `${Math.round(6.5 * u)}px Galmuri11, 'Pretendard', sans-serif`; c.fillText(name, cx, H * 0.86, W - 24); c.globalAlpha = 1; }
+      }
+      if (t < s.duration) live.raf = requestAnimationFrame(draw); else { const r = live; live = null; setTimeout(() => { try { ctx.close(); } catch (_) {} }, 200); if (done) done(false, r); }
+    };
+    live.raf = requestAnimationFrame(draw); played++;
+    return live;
+  }
+  // 건너뛰기: 소리를 짧게 줄이고 곧바로 끝낸다
+  function skip(done) { if (!live) return; const r = live; r.skipped = true; stop(); if (done) done(true, r); }
+  function setMuted(m) { muted = !!m; if (live) live.gain.gain.setTargetAtTime(muted ? 0 : 0.9, live.ctx.currentTime, 0.02); }
+
+  function packetOf(ans, seed) { return IW.World6.facetsFrom(ans, seed, {}); }
+  function openDemo() {
+    let el = document.getElementById('birthDemo'); if (el) { el.hidden = false; return; }
+    el = document.createElement('div'); el.id = 'birthDemo';
+    el.innerHTML = `<style>#birthDemo{position:fixed;inset:0;z-index:50;background:#000;color:#fff;display:flex;flex-direction:column;font-family:'Pretendard','Apple SD Gothic Neo','Malgun Gothic',sans-serif}
+#birthDemo canvas{flex:1;min-height:0;width:100%;display:block;image-rendering:pixelated}#birthDemo .bar{padding:10px 12px calc(10px + env(safe-area-inset-bottom,0px));background:#111;border-top:2px solid #fff;display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+#birthDemo button{font:inherit;min-height:44px;padding:6px 12px;background:#000;color:#fff;border:2px solid #fff;cursor:pointer}#birthDemo button[aria-pressed=true]{background:#fff;color:#000}#birthDemo p{margin:0;flex-basis:100%;font-size:.85rem;color:#bbb}</style>
+<canvas id="birthCv" aria-label="세계가 태어나는 장면"></canvas><div class="bar"><p id="birthSay">세계를 고르면 그 세계가 태어나는 장면이 재생돼요. 소리는 누른 뒤에만 켜져요.</p><span id="birthWorlds"></span>
+<button id="birthSkip" type="button">건너뛰기</button><button id="birthShort" type="button" aria-pressed="false">짧은 판</button><button id="birthMute" type="button" aria-pressed="false">소리 끄기</button><button id="birthWav" type="button">이 세계 소리 저장(WAV)</button><button id="birthClose" type="button">닫기</button></div>`;
+    document.body.append(el);
+    const cv = el.querySelector('#birthCv'), say = el.querySelector('#birthSay'); let cur = 0, short = false;
+    const fitCv = () => { const r = cv.getBoundingClientRect(), d = Math.min(2, g.devicePixelRatio || 1); cv.width = Math.round(r.width * d); cv.height = Math.round(r.height * d); }; fitCv(); addEventListener('resize', fitCv);
+    const list = PRESETS.slice(); try { const own = JSON.parse(localStorage.getItem('innerworld.blueprint.v2') || 'null'); if (own && own.answers && IW.Inner) list.unshift(['내 세계', IW.Inner.traits(own.answers), own.seed]); } catch (_) {}
+    const start = (i) => { cur = i; const [label, ans, seed] = list[i], p = packetOf(ans, seed), th = theme(p); fitCv(); say.textContent = `${label} — ${th.say}. 주제 음: ${th.notes.map((m) => ['도', '도#', '레', '레#', '미', '파', '파#', '솔', '솔#', '라', '라#', '시'][m % 12]).join(' ')}`;
+      play(cv, p, { short }, (skipped, r) => { IW.Birth.last = { skipped, drift: r.drift, fired: r.fired.map((x) => x.name), tail: r.s.tail }; say.textContent += skipped ? ' (건너뜀)' : ' — 끝. 마지막 음이 배경음의 첫 음으로 이어져요(연결은 다음 단계).'; }); };
+    list.forEach((x, i) => { const b = document.createElement('button'); b.type = 'button'; b.textContent = x[0]; b.dataset.i = i; b.addEventListener('click', () => start(i)); el.querySelector('#birthWorlds').append(b, ' '); });
+    el.querySelector('#birthSkip').addEventListener('click', () => skip((sk, r) => { IW.Birth.last = { skipped: true, drift: r.drift, fired: r.fired.map((x) => x.name) }; say.textContent += ' (건너뜀)'; const c = cv.getContext('2d'); c.fillStyle = '#000'; c.fillRect(0, 0, cv.width, cv.height); }));
+    el.querySelector('#birthShort').addEventListener('click', (e) => { short = !short; e.currentTarget.setAttribute('aria-pressed', String(short)); });
+    el.querySelector('#birthMute').addEventListener('click', (e) => { setMuted(!muted); e.currentTarget.setAttribute('aria-pressed', String(muted)); e.currentTarget.textContent = muted ? '소리 켜기' : '소리 끄기'; });
+    el.querySelector('#birthWav').addEventListener('click', async () => { const [label, ans, seed] = list[cur]; const r = await render(packetOf(ans, seed), { short }); const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([toWav(r.buf)], { type: 'audio/wav' })); a.download = `oryvune-birth-${cur}.wav`; a.click(); });
+    el.querySelector('#birthClose').addEventListener('click', () => { stop(); el.hidden = true; if (location.hash === '#birth') history.replaceState(null, '', location.pathname + location.search); });
+    addEventListener('keydown', (e) => { if (!el.hidden && (e.code === 'Escape' || e.code === 'Space') && live) { e.preventDefault(); el.querySelector('#birthSkip').click(); } });
+  }
+
+  IW.Birth = { theme, schedule, render, toWav, play, skip, stop, setMuted, openDemo, PRESETS, packetOf, titleOf, get live() { return live; }, get muted() { return muted; }, last: null };
+})(globalThis);
+
 // ---- src/ui/input.js ----
 /* 입력: 키보드(PC) + 가상 조이스틱과 조사 버튼(모바일) */
 (function (g) {
@@ -17081,6 +17845,7 @@ body.touch .pad {
       if (location.hash === '#play') { if (view !== 'play') show('play'); }
       else if (/^#IW\d+-/i.test(location.hash)) { if (view !== 'home') show('home'); IW.Quiz.openId(location.hash.slice(1)); }
       else if (location.hash === '#lab') { if (view !== 'home') show('home'); IW.Quiz.openLab(); }
+      else if (location.hash === '#birth') { if (view !== 'home') show('home'); IW.Birth.openDemo(); }
       else if (view !== 'home') show('home');
     });
     g.addEventListener('resize', drawLogo);
@@ -17097,6 +17862,7 @@ body.touch .pad {
     if (location.hash === '#play' && loadGenSave(TALE_ID)) enterTale(); else { if (location.hash === '#play') { try { history.replaceState(null, '', location.pathname + location.search); } catch (_) {} } show('home'); }
     if (idHash) IW.Quiz.openId(idHash); // 세계 ID가 붙은 링크로 들어오면 그 세계 설계도를 연다
     if (location.hash === '#lab') IW.Quiz.openLab(); // IW4 시제품 실험실
+    if (location.hash === '#birth') IW.Birth.openDemo(); // 세계가 태어나는 장면 데모 (소리)
     requestAnimationFrame(frame);
   }
 
