@@ -8,43 +8,46 @@
 <title>ORYVUNE</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <meta name="description" content="당신의 선택이 하나의 세계가 된다. 질문에 답하면 나만의 픽셀 RPG 세계가 생기고, 친구의 세계도 걸어 볼 수 있어요.">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Gowun+Batang:wght@400;700&family=Gowun+Dodum&display=swap">
+<link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/galmuri@2.40.3/dist/galmuri.css">
+<link rel="stylesheet" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard-dynamic-subset.min.css">
 <style>
-/* 개념: 웹페이지가 아니라 게임 화면. 모든 창은 같은 '종이 창'(픽셀 모서리, 잉크 테두리, 안쪽 금선) 하나로 통일한다. */
+/* 개념: 웹페이지가 아니라 게임 화면. 모든 창은 같은 창(흰 바탕, 검은 픽셀 테두리, 깎인 모서리) 하나로 통일한다. */
 :root {
-  --bg: #e7e1d1;
-  --win: #f4efe3;
-  --win-2: #e7dfcb;
-  --ink: #1d1822;
-  --soft: #5f5666;
-  --edge: #1d1822;
-  --edge-in: #cbbb93;
-  --veil: rgba(236, 229, 212, 0.18);
-  --accent-l: #2f5d8c;
-  --accent-d: #86aed8;
+  /* 2026-11 개편: 남색·살구색·명조풍을 걷어 냈다. 흰 창 + 검은 픽셀 테두리 + 픽셀 글꼴(제목·메뉴) + 고딕(읽는 글). 색은 고른 강조색 하나만 쓴다 */
+  --bg: #dfe6e8;
+  --win: #ffffff;
+  --win-2: #eceef0;
+  --ink: #111111;
+  --soft: #5b5f66;
+  --edge: #000000;
+  --edge-in: #c9ccd1;
+  --veil: rgba(255, 255, 255, 0.08);
+  --accent-l: #1f5fd1;
+  --accent-d: #7fb0ff;
   --accent: var(--accent-l);
-  --on-accent: #fbf8f0;
-  /* 게임 안 HUD와 대화창은 테마와 무관한 게임 팔레트 */
-  --stage: #0c0a11;
-  --paper: #f2ead6;
-  --paper-ink: #1d1822;
-  --paper-soft: #5e5262;
-  --f-text: 'Gowun Dodum', 'Noto Sans KR', 'Apple SD Gothic Neo', 'Malgun Gothic', system-ui, sans-serif;
-  --f-story: 'Gowun Batang', 'Noto Serif KR', 'Noto Serif CJK KR', serif;
+  --on-accent: #ffffff;
+  /* 게임 안 HUD와 대화창 */
+  --stage: #000000;
+  --paper: #ffffff;
+  --paper-ink: #111111;
+  --paper-soft: #5b5f66;
+  --f-text: 'Pretendard', 'Apple SD Gothic Neo', 'Malgun Gothic', 'Noto Sans KR', system-ui, sans-serif;
+  --f-display: 'Galmuri11', 'Galmuri14', 'Pretendard', 'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif;
+  --f-small: 'Galmuri9', 'Galmuri11', 'Pretendard', sans-serif;
+  --f-story: var(--f-display);
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
-    --bg: #0d0b12; --win: #17151e; --win-2: #24202d; --ink: #ece4d2; --soft: #a39cae;
-    --edge: #050407; --edge-in: #3c3548; --veil: rgba(8, 6, 12, 0.42);
-    --accent: var(--accent-d); --on-accent: #121019; color-scheme: dark;
+    --bg: #101113; --win: #1c1d20; --win-2: #2c2d31; --ink: #f3f3f3; --soft: #a6a9ae;
+    --edge: #000000; --edge-in: #45474d; --veil: rgba(0, 0, 0, 0.35);
+    --accent: var(--accent-d); --on-accent: #0b0b0b; color-scheme: dark;
   }
 }
 :root[data-theme="dark"] {
-  --bg: #0d0b12; --win: #17151e; --win-2: #24202d; --ink: #ece4d2; --soft: #a39cae;
-  --edge: #050407; --edge-in: #3c3548; --veil: rgba(8, 6, 12, 0.42);
-  --accent: var(--accent-d); --on-accent: #121019; color-scheme: dark;
+  --bg: #101113; --win: #1c1d20; --win-2: #2c2d31; --ink: #f3f3f3; --soft: #a6a9ae;
+  --edge: #000000; --edge-in: #45474d; --veil: rgba(0, 0, 0, 0.35);
+  --accent: var(--accent-d); --on-accent: #0b0b0b; color-scheme: dark;
 }
 
 *, *::before, *::after { box-sizing: border-box; }
@@ -74,11 +77,10 @@ button { font: inherit; color: inherit; -webkit-tap-highlight-color: transparent
   background: var(--win);
   color: var(--ink);
   border: 3px solid var(--edge);
-  box-shadow: inset 0 0 0 2px var(--edge-in);
   padding: 18px 18px 14px;
   clip-path: polygon(var(--cut) 0, calc(100% - var(--cut)) 0, 100% var(--cut), 100% calc(100% - var(--cut)), calc(100% - var(--cut)) 100%, var(--cut) 100%, 0 calc(100% - var(--cut)), 0 var(--cut));
 }
-.win-head { margin: 0 0 10px; font-family: var(--f-story); font-weight: 700; font-size: 1.2rem; }
+.win-head { margin: 0 0 12px; font-family: var(--f-display); font-weight: 400; font-size: 22px; line-height: 1.3; }
 .win-kicker { margin: 0 0 2px; font-size: .85rem; color: var(--soft); }
 .win-foot, .fine { margin: 10px 0 0; font-size: .82rem; color: var(--soft); }
 
@@ -89,7 +91,7 @@ button { font: inherit; color: inherit; -webkit-tap-highlight-color: transparent
   min-height: 46px;
   padding: 6px 12px 6px 34px;
   border: 0; background: transparent;
-  text-align: left; font-size: 1.12rem;
+  text-align: left; font-family: var(--f-display); font-weight: 400; font-size: 22px; line-height: 1.3;
   cursor: pointer;
 }
 .mi::before {
@@ -100,7 +102,7 @@ button { font: inherit; color: inherit; -webkit-tap-highlight-color: transparent
   clip-path: polygon(0 0, 100% 50%, 0 100%);
   opacity: 0;
 }
-.mi:hover, .mi:focus-visible { background: var(--win-2); outline: none; }
+.mi:hover, .mi:focus-visible { background: var(--ink); color: var(--win); outline: none; }
 .mi:hover::before, .mi:focus-visible::before { opacity: 1; }
 @media (hover: hover) { .mi:focus-visible::before { animation: nudge .5s steps(2) infinite; } }
 @keyframes nudge { 50% { transform: translateX(2px); } }
@@ -145,7 +147,7 @@ button { font: inherit; color: inherit; -webkit-tap-highlight-color: transparent
 .pips i { display: block; height: 4px; background: var(--edge-in); }
 .pips i.done { background: var(--accent); }
 .pips i.now { background: var(--ink); }
-.quiz-q { margin: 0 0 16px; font-family: var(--f-story); font-weight: 700; font-size: 1.28rem; line-height: 1.5; text-wrap: balance; min-height: 3em; }
+.quiz-q { margin: 0 0 16px; font-family: var(--f-text); font-weight: 700; letter-spacing: -.01em; font-size: 1.28rem; line-height: 1.5; text-wrap: balance; min-height: 3em; }
 .quiz-opts { display: flex; flex-direction: column; gap: 8px; }
 .opt {
   display: flex; align-items: center; gap: 12px; width: 100%;
@@ -171,7 +173,7 @@ button { font: inherit; color: inherit; -webkit-tap-highlight-color: transparent
 .link-btn { border: 0; background: transparent; padding: 8px 4px; min-height: 40px; color: var(--soft); cursor: pointer; text-decoration: underline; text-underline-offset: 3px; }
 .link-btn:hover { color: var(--ink); }
 .link-btn:disabled { visibility: hidden; }
-.bp-name { margin: 2px 0 14px; font-family: var(--f-story); font-weight: 700; font-size: 1.4rem; line-height: 1.4; text-wrap: balance; }
+.bp-name { margin: 2px 0 14px; font-family: var(--f-display); font-weight: 400; font-size: 22px; line-height: 1.4; text-wrap: balance; }
 .bp-lines { margin: 0 0 14px; display: grid; grid-template-columns: auto 1fr; gap: 6px 14px; padding-block: 12px; border-top: 1px solid var(--edge-in); border-bottom: 1px solid var(--edge-in); }
 .bp-lines dt { font-size: .85rem; color: var(--soft); white-space: nowrap; padding-top: 2px; }
 .bp-lines dd { margin: 0; min-width: 0; }
@@ -215,7 +217,7 @@ button { font: inherit; color: inherit; -webkit-tap-highlight-color: transparent
   display: inline-flex; align-items: center; gap: 8px;
   min-height: 36px; padding: 4px 10px;
   background: var(--paper); color: var(--paper-ink);
-  border: 2px solid #1d1822;
+  border: 2px solid #000000;
   box-shadow: 2px 2px 0 rgba(0, 0, 0, .45);
   font-size: .92rem; line-height: 1.35;
   min-width: 0;
@@ -223,8 +225,8 @@ button { font: inherit; color: inherit; -webkit-tap-highlight-color: transparent
 .slip-tag { flex: none; padding: 0 6px; background: var(--accent); color: var(--on-accent); font-size: .78rem; font-weight: 700; }
 .slip-count { font-variant-numeric: tabular-nums; white-space: nowrap; }
 .hearts { gap: 4px; padding-inline: 8px; }
-.hearts i { display: block; width: 10px; height: 14px; background: #cbbb93; clip-path: polygon(50% 0, 85% 45%, 100% 70%, 85% 92%, 50% 100%, 15% 92%, 0 70%, 15% 45%); }
-.hearts i.on { background: #2b2440; box-shadow: inset 0 -3px 0 var(--accent); }
+.hearts i { display: block; width: 10px; height: 14px; background: #c9ccd1; clip-path: polygon(50% 0, 85% 45%, 100% 70%, 85% 92%, 50% 100%, 15% 92%, 0 70%, 15% 45%); }
+.hearts i.on { background: #111111; box-shadow: inset 0 -3px 0 var(--accent); }
 .hearts.hit { animation: shake .3s steps(3); }
 @keyframes shake { 33% { transform: translateX(-2px); } 66% { transform: translateX(2px); } }
 .k-guard { display: none; }
@@ -235,11 +237,11 @@ body.has-bookmark .k-guard { display: inline; }
 .keyhint {
   position: absolute; bottom: 12px; left: max(10px, env(safe-area-inset-left, 0px));
   max-width: calc(100% - 20px);
-  padding: 5px 10px; background: rgba(12, 10, 17, .78); color: #efe6d0; font-size: .85rem;
+  padding: 5px 10px; background: rgba(0, 0, 0, .78); color: #ffffff; font-size: .85rem;
   transition: opacity .6s; pointer-events: none;
 }
 .keyhint.gone, .keyhint.wait { opacity: 0; }
-kbd { font-family: inherit; font-size: .8rem; padding: 0 4px; border: 1px solid #8d8494; }
+kbd { font-family: inherit; font-size: .8rem; padding: 0 4px; border: 1px solid #8a8d93; }
 .k-touch { display: none; }
 body.touch .k-key { display: none; }
 body.touch .k-touch { display: inline; }
@@ -247,7 +249,7 @@ body.touch .k-touch { display: inline; }
 .toast {
   position: absolute; top: calc(max(10px, env(safe-area-inset-top, 0px)) + 46px); left: 50%; transform: translateX(-50%);
   max-width: calc(100% - 24px); width: max-content;
-  padding: 7px 14px; background: var(--paper); color: var(--paper-ink); border: 2px solid #1d1822;
+  padding: 7px 14px; background: var(--paper); color: var(--paper-ink); border: 2px solid #000000;
   box-shadow: 2px 2px 0 rgba(0, 0, 0, .45); font-size: .95rem; text-align: center;
 }
 .toast.pop { animation: rise .35s cubic-bezier(.2, .8, .3, 1); }
@@ -257,7 +259,7 @@ body.touch .k-touch { display: inline; }
 .place-banner {
   position: absolute; top: calc(max(10px, env(safe-area-inset-top, 0px)) + 92px); left: 50%; transform: translateX(-50%);
   width: min(560px, calc(100% - 32px)); text-align: center; pointer-events: none;
-  color: #fff8ea; text-shadow: 0 2px 0 #1d1822, 0 0 6px rgba(20, 16, 30, .8);
+  color: #ffffff; text-shadow: 0 2px 0 #000000, 0 0 6px rgba(0, 0, 0, .8);
 }
 .place-banner b { display: block; font-size: 1.5rem; letter-spacing: .08em; font-weight: 700; }
 .place-banner span { display: block; margin-top: 4px; font-size: .95rem; line-height: 1.45; }
@@ -268,8 +270,7 @@ body.touch .k-touch { display: inline; }
   position: absolute; left: 12px; right: 12px; bottom: 12px; margin-inline: auto; max-width: 680px;
   padding: 20px 20px 26px; min-height: 104px;
   background: var(--paper); color: var(--paper-ink);
-  border: 3px solid #1d1822;
-  box-shadow: inset 0 0 0 2px #cbbb93;
+  border: 3px solid #000000;
   cursor: pointer; user-select: none; -webkit-user-select: none;
   animation: rise-d .22s cubic-bezier(.2, .8, .3, 1);
 }
@@ -277,18 +278,23 @@ body.touch .k-touch { display: inline; }
 .dialog-name {
   position: absolute; top: -16px; left: 14px;
   padding: 1px 12px; background: var(--paper); color: var(--paper-ink);
-  border: 2px solid #1d1822; border-bottom-color: var(--accent); border-bottom-width: 3px;
-  font-family: var(--f-story); font-weight: 700; font-size: .98rem;
+  border: 2px solid #000000; border-bottom-color: var(--accent); border-bottom-width: 3px;
+  font-family: var(--f-display); font-weight: 400; font-size: .98rem;
 }
-.dialog p { margin: 0; font-family: var(--f-story); font-size: 1.1rem; line-height: 1.7; min-height: 3.4em; }
+.dialog p { margin: 0; font-family: var(--f-text); font-weight: 500; font-size: 1.1rem; line-height: 1.65; min-height: 3.4em; }
 .dialog.narration p { color: var(--paper-soft); }
 .dialog-next { position: absolute; right: 12px; bottom: 6px; font-size: .8rem; color: var(--paper-soft); }
 .dialog-next::after { content: ''; display: inline-block; width: 8px; height: 6px; margin-left: 5px; background: currentColor; clip-path: polygon(0 0, 100% 0, 50% 100%); animation: bob 1s ease-in-out infinite; }
 @keyframes bob { 50% { transform: translateY(2px); } }
 
-.overlay { position: absolute; inset: 0; display: grid; place-items: center; padding: 16px; background: rgba(8, 6, 12, .55); overflow-y: auto; }
+.overlay { position: absolute; inset: 0; display: grid; place-items: center; padding: 16px; background: rgba(0, 0, 0, .55); overflow-y: auto; }
 .small-win { width: 100%; max-width: 360px; }
-.quote { margin: 4px 0 14px; padding-left: 12px; border-left: 3px solid var(--accent); font-family: var(--f-story); line-height: 1.7; }
+/* 탐험 지도: 종이 한 장 */
+.atlas-win { width: auto; max-width: calc(100vw - 24px); padding: 14px 14px 12px; }
+.atlas-paper { margin: 0 auto; max-width: 100%; border: 2px solid #000000; box-shadow: 3px 3px 0 rgba(0, 0, 0, .4); background: #f3f4f0; line-height: 0; }
+.stage .atlas-paper canvas { position: static; inset: auto; display: block; width: 100%; height: auto; image-rendering: pixelated; cursor: crosshair; }
+.atlas-win .fine { margin: 8px 0 0; max-width: 46ch; }
+.quote { margin: 4px 0 14px; padding-left: 12px; border-left: 3px solid var(--accent); font-family: var(--f-text); font-weight: 500; line-height: 1.7; }
 .stats { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 8px; margin: 0 0 4px; padding-block: 10px; border-top: 1px solid var(--edge-in); border-bottom: 1px solid var(--edge-in); }
 .stats dt { font-size: .8rem; color: var(--soft); }
 .stats dd { margin: 0; font-weight: 700; font-variant-numeric: tabular-nums; }
@@ -299,48 +305,48 @@ body.touch .k-touch { display: inline; }
 .guard {
   display: none;
   width: 76px; height: 76px; flex: none; border-radius: 50%;
-  border: 3px solid #050407; background: #2a2533; color: #efe6d0;
-  font-family: var(--f-story); font-weight: 700; font-size: .95rem;
-  box-shadow: 0 4px 0 #050407, inset 0 -4px 0 var(--accent); cursor: pointer; touch-action: none;
+  border: 3px solid #000000; background: #26272b; color: #ffffff;
+  font-family: var(--f-display); font-weight: 400; font-size: .95rem;
+  box-shadow: 0 4px 0 #000000, inset 0 -4px 0 var(--accent); cursor: pointer; touch-action: none;
   margin-bottom: 22px;
 }
 body.has-bookmark .guard { display: block; }
 .guard.cool { opacity: .6; }
-.guard.on { transform: translateY(3px); box-shadow: 0 1px 0 #050407, inset 0 -4px 0 var(--accent); background: var(--accent); color: var(--on-accent); }
+.guard.on { transform: translateY(3px); box-shadow: 0 1px 0 #000000, inset 0 -4px 0 var(--accent); background: var(--accent); color: var(--on-accent); }
 .pad { display: none; }
 body.touch .pad {
   display: flex; justify-content: space-between; align-items: center; gap: 16px;
   padding-block: 14px 16px;
   padding-left: max(22px, env(safe-area-inset-left, 0px));
   padding-right: max(22px, env(safe-area-inset-right, 0px));
-  background: #15121b; border-top: 2px solid #050407;
+  background: #141517; border-top: 2px solid #000000;
   touch-action: none; user-select: none; -webkit-user-select: none;
 }
 .joy {
   position: relative; width: 136px; height: 136px; flex: none;
-  border-radius: 50%; border: 3px solid #3c3548; background: #1e1a26;
+  border-radius: 50%; border: 3px solid #45474d; background: #1b1c1f;
   touch-action: none;
 }
-.joy::before, .joy::after { content: ''; position: absolute; left: 50%; top: 50%; background: #2d2837; transform: translate(-50%, -50%); }
+.joy::before, .joy::after { content: ''; position: absolute; left: 50%; top: 50%; background: #303136; transform: translate(-50%, -50%); }
 .joy::before { width: 70%; height: 3px; }
 .joy::after { width: 3px; height: 70%; }
 .joy-knob {
   position: absolute; left: 50%; top: 50%; z-index: 1;
   width: 58px; height: 58px; border-radius: 50%;
-  background: var(--paper); border: 3px solid #050407;
-  box-shadow: inset 0 -4px 0 #cbbb93;
+  background: var(--paper); border: 3px solid #000000;
+  box-shadow: inset 0 -4px 0 #c9ccd1;
   transform: translate(-50%, -50%);
 }
 .joy.on .joy-knob { box-shadow: inset 0 -4px 0 var(--accent); }
 .act {
   width: 100px; height: 100px; flex: none; border-radius: 50%;
-  border: 3px solid #050407; background: #2a2533; color: #efe6d0;
-  font-family: var(--f-story); font-weight: 700; font-size: 1.1rem;
-  box-shadow: 0 5px 0 #050407; cursor: pointer; touch-action: none;
+  border: 3px solid #000000; background: #26272b; color: #ffffff;
+  font-family: var(--f-display); font-weight: 400; font-size: 1.1rem;
+  box-shadow: 0 5px 0 #000000; cursor: pointer; touch-action: none;
   transition: background .15s;
 }
-.act.ready { background: var(--paper); color: var(--paper-ink); box-shadow: 0 5px 0 #050407, inset 0 -5px 0 var(--accent); }
-.act.on { transform: translateY(4px); box-shadow: 0 1px 0 #050407; }
+.act.ready { background: var(--paper); color: var(--paper-ink); box-shadow: 0 5px 0 #000000, inset 0 -5px 0 var(--accent); }
+.act.on { transform: translateY(4px); box-shadow: 0 1px 0 #000000; }
 
 @media (max-width: 640px) {
   .hud { flex-wrap: wrap; row-gap: 6px; }
@@ -370,13 +376,13 @@ body.touch .pad {
 /* 내면 세계: 선택지, 결말 세 칸, 해설 */
 .choices { display: grid; gap: 6px; margin-top: 10px; }
 .choice { display: flex; gap: 10px; align-items: center; width: 100%; min-height: 44px; padding: 8px 12px; text-align: left;
-  border: 2px solid var(--edge-in, #4a4256); background: transparent; color: inherit; font: inherit; font-size: 1rem; cursor: pointer; }
+  border: 2px solid var(--edge-in, #45474d); background: transparent; color: inherit; font: inherit; font-size: 1rem; cursor: pointer; }
 .choice b { display: inline-grid; place-items: center; width: 22px; height: 22px; font-size: .8rem; border: 1px solid currentColor; flex: none; }
 .choice.sel, .choice:hover, .choice:focus-visible { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 18%, transparent); outline: none; }
 #complete .small-win { max-width: 420px; }
 #complete .win { max-height: calc(100dvh - 32px); overflow-y: auto; }
 .ends { list-style: none; display: grid; gap: 6px; margin: 12px 0; padding: 0; }
-.ends li { padding: 8px 10px; border: 1px dashed var(--edge-in, #4a4256); font-size: .95rem; }
+.ends li { padding: 8px 10px; border: 1px dashed var(--edge-in, #45474d); font-size: .95rem; }
 .ends li.got { border-style: solid; }
 .ends li.now { border-style: solid; border-color: var(--accent); font-weight: 700; }
 .ends li.locked { color: var(--soft); }
@@ -400,9 +406,9 @@ body.touch .pad {
 
 /* 대표 슬로건: 로고 바로 아래, 이야기 글꼴로 크게. 낱말이 하나씩 놓이고 '선택'·'세계'는 강조색 밑줄이 그어진다 */
 .hero { display: flex; flex-direction: column; align-items: center; gap: 14px; max-width: 100%; }
-.slogan-hero { margin: 0; font-family: var(--f-story); font-weight: 700; font-size: clamp(1.35rem, 4.6vw, 2.3rem); line-height: 1.35; letter-spacing: -.01em; text-align: center; color: #f6efdc; text-shadow: 0 2px 0 #1d1822, 2px 0 0 #1d1822, -2px 0 0 #1d1822, 0 -2px 0 #1d1822, 0 5px 0 rgba(29,24,34,.45); text-wrap: balance; }
+.slogan-hero { margin: 0; font-family: var(--f-display); font-weight: 400; font-size: 22px; line-height: 1.45; letter-spacing: 0; text-align: center; color: #ffffff; text-shadow: 0 2px 0 #000000, 2px 0 0 #000000, -2px 0 0 #000000, 0 -2px 0 #000000, 0 5px 0 rgba(29,24,34,.45); text-wrap: balance; }
 .slogan-hero i { font-style: normal; display: inline-block; opacity: 0; transform: translateY(6px); animation: slogan-in .6s cubic-bezier(.2,.7,.2,1) forwards; animation-delay: calc(.35s + var(--d) * .22s); }
-.slogan-hero em { font-style: normal; position: relative; color: #fff7e0; }
+.slogan-hero em { font-style: normal; position: relative; color: #ffffff; }
 .slogan-hero em::after { content: ''; position: absolute; left: -2px; right: -2px; bottom: .02em; height: .2em; background: var(--accent); opacity: .9; transform: scaleX(0); transform-origin: left; animation: slogan-line .5s ease-out forwards; animation-delay: calc(1.6s + var(--d, 0) * .2s); z-index: -1; }
 @keyframes slogan-in { to { opacity: 1; transform: none; } }
 @keyframes slogan-line { to { transform: scaleX(1); } }
@@ -418,7 +424,7 @@ body.touch .pad {
 /* 제작자의 세계: 메뉴 맨 위, 책 표지처럼 */
 .creator { margin: 0 0 10px; padding: 12px 14px 12px 16px; border-left: 4px solid var(--accent); background: var(--paper-2, rgba(0,0,0,.03)); }
 .creator-tag { margin: 0; font-size: .78rem; letter-spacing: .08em; color: var(--accent-ink, var(--accent)); font-weight: 700; }
-.creator-name { margin: 2px 0 6px; font-family: var(--f-story); font-weight: 700; font-size: 1.35rem; }
+.creator-name { margin: 2px 0 6px; font-family: var(--f-display); font-weight: 400; font-size: 22px; }
 .creator-desc { margin: 0; font-size: .9rem; line-height: 1.55; color: var(--soft); }
 .mi-main { font-weight: 700; }
 @media (orientation: landscape) and (max-height: 520px) { .creator-desc { display: none; } .creator { padding: 8px 12px; } }
@@ -429,10 +435,19 @@ body.touch .pad {
 .lab-item { text-align: left; font-size: 15px; }
 .lab-form { display: grid; gap: 8px; margin: 8px 0 14px; }
 .lab-row { display: grid; grid-template-columns: 1fr; gap: 3px; font-size: 14px; }
-.lab-row span { color: var(--muted, #8f879c); }
-.lab-row select, .lab-row input { font: inherit; padding: 8px; border: 2px solid var(--ink, #1d1822); background: var(--paper, #f2ead6); color: var(--ink, #1d1822); border-radius: 0; min-height: 40px; }
+.lab-row span { color: var(--muted, #8a8d93); }
+.lab-row select, .lab-row input { font: inherit; padding: 8px; border: 2px solid var(--ink, #000000); background: var(--paper, #ffffff); color: var(--ink, #000000); border-radius: 0; min-height: 40px; }
 .own-end { display: flex; gap: 8px; align-items: flex-start; font-size: 14px; margin: 8px 0; cursor: pointer; }
 .own-end input { width: 20px; height: 20px; flex: none; margin-top: 2px; }
+
+/* ---------- 2026-11 개편: 글꼴 크기는 픽셀 글꼴이 또렷한 배수(11·22·33 / 9·18)로 ---------- */
+@media (min-width: 720px) { .slogan-hero { font-size: 33px; } }
+@media (max-width: 420px) { .mi { font-family: var(--f-small); font-size: 18px; } .win-head, .bp-name, .creator-name { font-size: 22px; } }
+.slip-btn, .slip-count, .slip-tag, .quiz-cat, .quiz-count, kbd { font-family: var(--f-small); font-weight: 400; }
+.slip-btn, .slip-count { font-size: 18px; line-height: 1; }
+.seg button[aria-pressed="true"] { background: var(--ink); color: var(--win); }
+.win-kicker, .win-foot, .fine, .set-label { letter-spacing: 0; }
+@media (max-width: 640px) { .slip-btn, .slip-count { font-family: var(--f-text); font-size: .9rem; font-weight: 600; } }
 
 </style>
 
@@ -604,12 +619,13 @@ body.touch .pad {
       <div class="hud-right">
         <span class="slip hearts" id="hearts" hidden aria-label="잉크 방울 3개"><i></i><i></i><i></i></span>
         <span class="slip slip-count" id="foundText">발견 0/7</span>
+        <button id="btnAtlas" class="slip slip-btn" type="button" aria-label="탐험 지도 열기">지도</button>
         <button id="btnMenu" class="slip slip-btn" type="button" aria-label="일시 정지 메뉴">메뉴</button>
       </div>
     </div>
 
     <div class="keyhint" id="keyhint">
-      <span class="k-key"><kbd>←↑↓→</kbd> 이동 · <kbd>Space</kbd> 조사·대화 <span class="k-guard">· <kbd>X</kbd> <span class="k-skill">책갈피</span> </span>· <kbd>Esc</kbd> 메뉴</span>
+      <span class="k-key"><kbd>←↑↓→</kbd> 이동 · <kbd>Space</kbd> 조사·대화 <span class="k-guard">· <kbd>X</kbd> <span class="k-skill">책갈피</span> </span>· <kbd>M</kbd> 지도 · <kbd>Esc</kbd> 메뉴</span>
       <span class="k-touch">왼쪽 원으로 이동 · 오른쪽 버튼으로 조사<span class="k-guard"> · <span class="k-skill">책갈피</span> 버튼으로 능력 쓰기</span></span>
     </div>
     <div class="toast" id="toast" role="status" hidden></div>
@@ -622,6 +638,15 @@ body.touch .pad {
       <div class="choices" id="dlgChoices" hidden></div>
     </div>
     <div class="sr" id="dlgLive" aria-live="polite"></div>
+
+    <section class="overlay" id="atlas" hidden aria-labelledby="aTitle">
+      <div class="win atlas-win">
+        <p class="win-head" id="aTitle">내가 걸은 지도</p>
+        <div class="atlas-paper"><canvas id="atlasCv" role="img" aria-label="지금까지 걸으며 본 곳의 지도"></canvas></div>
+        <p class="fine" id="atlasNote"></p>
+        <div class="menu"><button id="atlasClose" class="mi" type="button">닫기</button></div>
+      </div>
+    </section>
 
     <section class="overlay" id="pause" hidden aria-labelledby="pTitle">
       <div class="win small-win">
@@ -1192,9 +1217,9 @@ body.touch .pad {
   function encode(seed, answers, pub, gv) {
     let n = 0;
     for (let i = 9; i >= 0; i--) n = n * 5 + answers[i];
-    let id = `IW${gv === 6 ? 6 : gv === 5 ? 5 : gv === 4 ? 4 : gv === 3 ? 3 : 2}-${seed.toString(36).toUpperCase()}-${n.toString(36).toUpperCase()}`;
+    let id = `IW${gv === 5 ? 5 : gv === 4 ? 4 : gv === 3 ? 3 : 2}-${seed.toString(36).toUpperCase()}-${n.toString(36).toUpperCase()}`;
     const keep = {};
-    if (pub && gv !== 6) for (const k of ['thing', 'person', 'scene', 'name']) if (pub[k]) keep[k] = pub[k];
+    if (pub) for (const k of ['thing', 'person', 'scene', 'name']) if (pub[k]) keep[k] = pub[k];
     if (pub && pub.notes === false) keep.n = 0;
     if (pub && pub.w) keep.w = pub.w;
     if (pub && (pub.d === 'e' || pub.d === 'h')) keep.d = pub.d;
@@ -1208,12 +1233,11 @@ body.touch .pad {
   function decode(raw) {
     const s = String(raw || '').trim().replace(/^#/, '');
     const [head, tail] = s.split('~');
-    const m = /^IW([23456])-([0-9A-Z]{1,8})-([0-9A-Z]{1,8})$/i.exec(head || '');
+    const m = /^IW([2345])-([0-9A-Z]{1,8})-([0-9A-Z]{1,8})$/i.exec(head || '');
     if (!m) return null;
     const gv = +m[1];
     const seed = parseInt(m[2], 36), n0 = parseInt(m[3], 36);
     if (!Number.isFinite(seed) || !Number.isFinite(n0)) return null;
-    if(gv===6&&seed>0xffffffff)return null;
     let n = n0;
     const answers = [];
     for (let i = 0; i < 10; i++) { answers.push(n % 5); n = Math.floor(n / 5); }
@@ -1222,9 +1246,9 @@ body.touch .pad {
     if (tail) {
       try {
         const o = JSON.parse(b64d(tail));
-        if(gv!==6)for (const f of FREE) if (typeof o[f.id] === 'string') { const c = IW.Questions.cleanFree(o[f.id], f.max); if (c.ok && c.text) pub[f.id] = c.text; }
+        for (const f of FREE) if (typeof o[f.id] === 'string') { const c = IW.Questions.cleanFree(o[f.id], f.max); if (c.ok && c.text) pub[f.id] = c.text; }
         if (o.n === 0) notes = false;
-        if (typeof o.w === 'string' && (gv===6?/^(?:[ds][a-z0-9-]{1,30}|f[0-7])$/:/^[ds][a-z0-9-]{1,30}$/).test(o.w)) pub.w = o.w;
+        if (typeof o.w === 'string' && /^[ds][a-z0-9-]{1,30}$/.test(o.w)) pub.w = o.w;
         if (o.d === 'e' || o.d === 'h') pub.d = o.d;
         if (typeof o.e === 'string' && /^[a-z]{2,8}$/.test(o.e)) pub.e = o.e;
       } catch (_) { /* 깨진 꼬리는 무시하고 세계만 연다 */ }
@@ -9602,6 +9626,212 @@ body.touch .pad {
   IW.Tale = { setup, begin, objectiveText, talk, spot, update, path, hitFoe, _battle: (w) => w.taleRT && w.taleRT.battle };
 })(globalThis);
 
+// ---- src/game/atlas.js ----
+/* 탐험 지도 — 걸은 만큼 채워지는 종이 지도
+   - 세계 정보(지형)는 지도에서 읽고, 발견 기록은 따로 둔다 (세계 코드·공유 링크에 들어가지 않는다).
+   - 둘레 약 5칸이 그려지되, 높은 것(벽·집·큰 나무·절벽) 뒤는 보이지 않는다. 막는 것의 윤곽까지만 그린다.
+   - 숨은 구역(IW4의 숨은 지역)은 그 안에 들어가야 그려진다. 숨은 틈은 지나가기 전까지 벽으로 그린다.
+   - 지도에는 "마지막으로 본 모습"이 남는다. 바뀐 곳은 다시 가서 봐야 바뀐다.
+   - 표시: 내 위치·방향, 가 본 장소 이름, 말을 나눈 사람의 마지막 자리, 내가 찍은 표시 3개. 목표·길 안내는 없다.
+   저장: 이 브라우저의 localStorage (innerworld.atlas.<세계>.<지역>.<주인 o | 방문자 v>). 서버 저장이 아니다. */
+(function (g) {
+  const IW = (g.IW = g.IW || {});
+  const T = 16, R = 5.5, R_STEPS = 9, WALKED = 32, PINS = 3;
+  // 칸 종류 (1~31)
+  const C = { ground: 1, road: 2, water: 3, wall: 4, tree: 5, low: 6, boards: 7, sand: 8, house: 9, landmark: 10, flowers: 11, stairs: 12, rock: 13, floor: 14 };
+  const TALL = new Set(['X', '#', 'o', 'n', 'N', 'E', 'M', 'B', 'D', 'c', 'A', 'W', 'K', 'I']); // 시야를 막는 칸 (숨은 틈 I·커튼 c 포함)
+  const SECRET = new Set(['I', 'c']);
+  const CHAR = { '~': C.water, j: C.road, t: C.road, r: C.road, O: C.stairs, f: C.flowers, A: C.tree, z: C.low, K: C.landmark, F: C.low, '.': C.floor, ',': C.floor, g: C.floor, H: C.floor, v: C.ground };
+  const TER = { sea: C.water, stream: C.water, cobble: C.road, dirt: C.road, rail: C.road, boards: C.boards, boardsV: C.boards, quay: C.boards, sand: C.sand, stair: C.stairs, garden: C.flowers, woods: C.tree, rockflat: C.rock };
+
+  function objGrid(map) {
+    if (map._atlasObj) return map._atlasObj;
+    const G = new Uint8Array(map.w * map.h), S = map.sceneData;
+    if (S && IW.Scene) for (const o of S.objs) {
+      const K = IW.Scene.KIND[o.k]; if (!K || !K.solid) continue;
+      const c = o.k === 'house' ? C.house : (o.k === 'tree' || o.k === 'pine') ? C.tree : C.low;
+      for (const [x, y] of o.foot || IW.Scene.footprint(o)) if (x >= 0 && y >= 0 && x < map.w && y < map.h) G[y * map.w + x] = c;
+    }
+    return (map._atlasObj = G);
+  }
+  function classOf(map, x, y) {
+    const ch = map.at(x, y), S = map.sceneData;
+    if (ch === 'K') return C.landmark;
+    if (S) {
+      const o = objGrid(map)[y * map.w + x]; if (o) return o;
+      const t = TER[S.ter[y][x]];
+      if (ch === '~') return C.water;
+      if (ch === 'W' && t !== C.boards && t !== C.road) return t === C.tree ? C.tree : C.wall;
+      return t === C.water ? C.sand : t || C.ground; // 물 지형인데 걸을 수 있으면(썰물 모래톱) 모래
+    }
+    if (CHAR[ch]) return CHAR[ch];
+    if (TALL.has(ch)) return C.wall;
+    if (map.isProp && map.isProp(ch)) return C.low;
+    if (map.isSolidFull && map.isSolidFull(ch)) return C.low;
+    return C.floor;
+  }
+  // 숨은 구역: 그 안에 서 있을 때만 그려진다
+  function zoneOf(map, x, y) {
+    const Z = map._atlasZones || (map._atlasZones = ((map.sceneData && map.sceneData.places) || []).filter((p) => p.id === 'hidden').flatMap((p) => p.area));
+    for (const r of Z) if (x >= r[0] && x <= r[2] && y >= r[1] && y <= r[3]) return 1;
+    return 0;
+  }
+  const tall = (map, x, y) => TALL.has(map.at(x, y)) && !(map.open && map.open.has(x + ',' + y));
+
+  // (tx, ty)에 서서 보이는 칸을 cls에 적는다. 새로 본 칸 수를 돌려준다
+  function reveal(cls, map, tx, ty, radius) {
+    const W = map.w, H = map.h, rad = radius || R, steps = Math.ceil(rad) + (R_STEPS - Math.ceil(R));
+    if (tx < 0 || ty < 0 || tx >= W || ty >= H) return 0;
+    const zone = zoneOf(map, tx, ty), seen = new Map([[ty * W + tx, 0]]), q = [[tx, ty]];
+    let fresh = 0;
+    const put = (x, y, c) => { const i = y * W + x, old = cls[i]; if (!(old & 31)) fresh++; cls[i] = (old & WALKED) | c; };
+    for (let i = 0; i < q.length; i++) {
+      const [x, y] = q[i], d = seen.get(y * W + x);
+      put(x, y, classOf(map, x, y));
+      if (d >= steps) continue;
+      for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+        const X = x + dx, Y = y + dy; if (X < 0 || Y < 0 || X >= W || Y >= H || seen.has(Y * W + X)) continue;
+        if ((X - tx) * (X - tx) + (Y - ty) * (Y - ty) > rad * rad) continue;
+        seen.set(Y * W + X, d + 1);
+        if (tall(map, X, Y)) { if (!(SECRET.has(map.at(X, Y)) && (cls[Y * W + X] & WALKED))) put(X, Y, SECRET.has(map.at(X, Y)) ? C.wall : classOf(map, X, Y)); continue; } // 막는 것: 윤곽만, 그 너머로는 안 간다
+        if (zoneOf(map, X, Y) !== zone) continue; // 다른 구역(숨은 곳)은 들어가야 보인다
+        q.push([X, Y]);
+      }
+    }
+    // 내가 선 칸: 숨은 틈이었어도 이제 길
+    const i0 = ty * W + tx; cls[i0] = WALKED | (SECRET.has(map.at(tx, ty)) ? C.road : classOf(map, tx, ty));
+    return fresh;
+  }
+  // 처음 도착했을 때 보이는 범위 (공유 카드용). 발견 기록과 무관하게 지도만으로 계산한다
+  function arrival(map, radius) {
+    const cls = new Uint8Array(map.w * map.h);
+    reveal(cls, map, Math.floor(map.start.x / T), Math.floor((map.start.y - 4) / T), radius || 9);
+    return cls;
+  }
+
+  // ---------- 저장 ----------
+  const b64 = (u8) => { let s = ''; for (const b of u8) s += String.fromCharCode(b); return btoa(s); };
+  const unb64 = (s) => Uint8Array.from(atob(s), (c) => c.charCodeAt(0));
+  function pack(cls) { const out = []; for (let i = 0; i < cls.length;) { let n = 1; while (i + n < cls.length && cls[i + n] === cls[i] && n < 255) n++; out.push(cls[i], n); i += n; } return b64(Uint8Array.from(out)); }
+  function unpack(s, len) { const cls = new Uint8Array(len), a = unb64(s); let i = 0; for (let k = 0; k + 1 < a.length && i < len; k += 2) { cls.fill(a[k], i, Math.min(len, i + a[k + 1])); i += a[k + 1]; } return i === len ? cls : null; }
+  const store = () => { try { return g.localStorage || null; } catch (_) { return null; } };
+  const keyOf = (w) => 'innerworld.atlas.' + (w.worldId || 'official') + '.' + w.mapId + '.' + (w.atlasRole === 'v' ? 'v' : 'o');
+  function load(w) {
+    const map = w.map, fresh = { cls: new Uint8Array(map.w * map.h), met: {}, pins: [], last: null, dirty: false };
+    const ls = store(); if (!ls) return fresh;
+    try {
+      const s = JSON.parse(ls.getItem(keyOf(w)) || 'null');
+      if (!s || s.v !== 1 || s.w !== map.w || s.h !== map.h) return fresh; // 크기가 다르면(다른 규칙의 지도) 새 종이
+      const cls = unpack(s.c, map.w * map.h); if (!cls) return fresh;
+      return { cls, met: s.m || {}, pins: Array.isArray(s.p) ? s.p.slice(0, PINS) : [], last: null, dirty: false };
+    } catch (_) { return fresh; }
+  }
+  function save(w) {
+    const ls = store(); if (!ls || !w.atlas) return;
+    for (const [id, a] of Object.entries(w.atlas)) {
+      if (!a.dirty) continue;
+      const map = IW.MAPS[id]; if (!map) continue;
+      try { ls.setItem('innerworld.atlas.' + (w.worldId || 'official') + '.' + id + '.' + (w.atlasRole === 'v' ? 'v' : 'o'), JSON.stringify({ v: 1, w: map.w, h: map.h, c: pack(a.cls), m: a.met, p: a.pins })); a.dirty = false; } catch (_) {}
+    }
+  }
+  // 이 세계의 발견 기록 지우기 (처음부터 다시 할 때). role을 주면 그 사람 것만
+  function clear(worldId, role) {
+    const ls = store(); if (!ls) return;
+    const pre = 'innerworld.atlas.' + (worldId || 'official') + '.', del = [];
+    try { for (let i = 0; i < ls.length; i++) { const k = ls.key(i); if (k && k.startsWith(pre) && (!role || k.endsWith('.' + role))) del.push(k); } del.forEach((k) => ls.removeItem(k)); } catch (_) {}
+  }
+  function state(w) { w.atlas = w.atlas || {}; return w.atlas[w.mapId] || (w.atlas[w.mapId] = load(w)); }
+
+  // 매 프레임: 서 있는 칸이 바뀌었을 때만 계산한다
+  function step(w) {
+    if (!w || !w.map || !w.player || w.trans) return;
+    const tx = Math.floor(w.player.x / T), ty = Math.floor((w.player.y - 1) / T), a = state(w);
+    if (a.last === tx + ',' + ty) return;
+    a.last = tx + ',' + ty;
+    reveal(a.cls, w.map, tx, ty); a.dirty = true;
+  }
+  // 말을 나눈 사람: 마지막으로 본 자리만 남긴다 (지금 어디 있는지는 알려 주지 않는다)
+  function met(w, n) {
+    if (!n || !n.id || n.cr || n.ghost) return;
+    const a = state(w); a.met[n.id] = [Math.floor(n.x / T), Math.floor((n.y - 1) / T), n.name || '']; a.dirty = true;
+  }
+  function togglePin(w, tx, ty) {
+    const a = state(w), i = a.pins.findIndex((p) => Math.abs(p[0] - tx) <= 1 && Math.abs(p[1] - ty) <= 1);
+    if (i >= 0) a.pins.splice(i, 1);
+    else { if (!(a.cls[ty * w.map.w + tx] & 31)) return false; if (a.pins.length >= PINS) a.pins.shift(); a.pins.push([tx, ty]); }
+    a.dirty = true; return true;
+  }
+  function stats(w) { const a = state(w); let seen = 0, walked = 0; for (const v of a.cls) { if (v & 31) seen++; if (v & WALKED) walked++; } return { seen, walked, total: a.cls.length }; }
+
+  // ---------- 그리기 ----------
+  const INK = { 1: '#cfd6a8', 2: '#d9c79a', 3: '#9fc0cf', 4: '#6f6558', 5: '#7f9a6a', 6: '#a39579', 7: '#b89466', 8: '#e6d6a6', 9: '#b0684f', 10: '#c9483a', 11: '#d7cf9a', 12: '#c2b28a', 13: '#b9b3a4', 14: '#dccfae' };
+  const PAPER = '#f3f4f0', PAPER_EDGE = '#d6d8d1', LINE = '#111111';
+  // 보여 줄 범위: 본 칸을 감싸는 상자 + 여백. 세계의 끝은 알려 주지 않는다 (종이는 걸은 만큼 넓어진다)
+  function viewOf(w, minW, minH) {
+    const a = state(w), W = w.map.w, H = w.map.h; let x0 = W, y0 = H, x1 = -1, y1 = -1;
+    for (let i = 0; i < a.cls.length; i++) if (a.cls[i] & 31) { const x = i % W, y = (i / W) | 0; if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y; }
+    if (x1 < 0) { x0 = x1 = Math.floor(w.player.x / T); y0 = y1 = Math.floor(w.player.y / T); }
+    x0 -= 3; y0 -= 3; x1 += 3; y1 += 3;
+    const grow = (lo, hi, min) => { const need = min - (hi - lo + 1); return need > 0 ? [lo - Math.floor(need / 2), hi + Math.ceil(need / 2)] : [lo, hi]; };
+    [x0, x1] = grow(x0, x1, minW || 26); [y0, y1] = grow(y0, y1, minH || 16);
+    return { x0, y0, cols: x1 - x0 + 1, rows: y1 - y0 + 1 };
+  }
+  // 캔버스 한 장에 그린다. 돌려주는 값으로 화면 좌표 ↔ 칸을 바꿀 수 있다
+  function draw(cv, w, opts) {
+    opts = opts || {};
+    const a = state(w), map = w.map, W = map.w, H = map.h, V = viewOf(w, opts.minW, opts.minH);
+    const s = Math.max(3, Math.floor(Math.min((opts.maxW || 640) / V.cols, (opts.maxH || 420) / V.rows)));
+    cv.width = V.cols * s; cv.height = V.rows * s;
+    const c = cv.getContext('2d'); c.imageSmoothingEnabled = false;
+    c.fillStyle = PAPER; c.fillRect(0, 0, cv.width, cv.height);
+    // 종이 결
+    c.fillStyle = PAPER_EDGE; for (let y = 0; y < V.rows; y++) for (let x = 0; x < V.cols; x++) { const h = Math.imul((x + V.x0) * 73856093 ^ (y + V.y0) * 19349663, 2654435761) >>> 0; if (h % 11 === 0) c.fillRect(x * s + (h >> 8) % s, y * s + (h >> 12) % s, 1, 1); }
+    const at = (x, y) => (x < 0 || y < 0 || x >= W || y >= H ? 0 : a.cls[y * W + x]);
+    for (let y = 0; y < V.rows; y++) for (let x = 0; x < V.cols; x++) {
+      const mx = x + V.x0, my = y + V.y0, v = at(mx, my), k = v & 31; if (!k) continue;
+      c.fillStyle = INK[k] || INK[1]; c.fillRect(x * s, y * s, s, s);
+      if (k === C.water && ((mx * 3 + my * 5) % 7 === 0)) { c.fillStyle = '#c4dbe4'; c.fillRect(x * s + 1, y * s + (s >> 1), Math.max(1, s - 2), 1); }
+      if (k === C.tree) { c.fillStyle = '#5f7d50'; c.fillRect(x * s + (s >> 2), y * s + (s >> 2), Math.max(1, s >> 1), Math.max(1, s >> 1)); }
+      if (k === C.house) { c.fillStyle = '#8c4d3a'; c.fillRect(x * s, y * s, s, 1); }
+      // 본 곳과 안 본 곳의 경계: 잉크 선
+      c.fillStyle = LINE;
+      if (k === C.wall || k === C.house || k === C.landmark) { if ((at(mx, my + 1) & 31) && (at(mx, my + 1) & 31) !== k) c.fillRect(x * s, y * s + s - 1, s, 1); }
+      if (v & WALKED) { c.fillStyle = 'rgba(0,0,0,.38)'; c.fillRect(x * s + (s >> 1), y * s + (s >> 1), 1, 1); }
+    }
+    const px = (tx) => (tx - V.x0) * s, py = (ty) => (ty - V.y0) * s;
+    const fs = Math.max(10, Math.min(14, Math.round(s * 2.2)));
+    c.textBaseline = 'middle'; c.font = `700 ${fs}px 'Pretendard', 'Apple SD Gothic Neo', sans-serif`;
+    const label = (text, x, y, align) => { c.textAlign = align || 'center'; c.lineWidth = 3; c.strokeStyle = PAPER; c.strokeText(text, x, y); c.fillStyle = LINE; c.fillText(text, x, y); };
+    // 가 본 장소 이름
+    const P = (map.sceneData && map.sceneData.places) || [];
+    for (const p of P) {
+      const known = (w.flags && w.flags['pl_' + p.id]) || (w.found && w.found[w.mapId] && w.found[w.mapId].has(p.id)) || (w.found && w.found.gen && w.found.gen.has(p.id));
+      if (!known || !p.name) continue;
+      // 이름은 그 장소에서 내가 본 칸들의 가운데에
+      let sx = 0, sy = 0, n = 0; for (const r of p.area) for (let yy = r[1]; yy <= r[3]; yy++) for (let xx = r[0]; xx <= r[2]; xx++) if (at(xx, yy) & 31) { sx += xx; sy += yy; n++; }
+      if (n) { let lx = px(sx / n) + s / 2, ly = py(sy / n) + s / 2; const mx = px(Math.floor(w.player.x / T)) + s / 2, my = py(Math.floor((w.player.y - 1) / T)) + s / 2; if (Math.abs(lx - mx) < s * 4 && Math.abs(ly - my) < s * 1.6) ly = my - s * 1.9; label(p.name, lx, ly); } // 내 위치 표시와 겹치면 위로
+    }
+    // 말을 나눈 사람 (마지막으로 본 자리)
+    for (const m of Object.values(a.met)) {
+      const x = px(m[0]) + s / 2, y = py(m[1]) + s / 2;
+      c.fillStyle = LINE; c.fillRect(x - 3, y - 3, 6, 6); c.fillStyle = '#f3d36b'; c.fillRect(x - 2, y - 2, 4, 4);
+      if (m[2] && opts.names !== false) { c.font = `${fs - 1}px 'Pretendard', sans-serif`; label(m[2], x + 6, y, 'left'); c.font = `700 ${fs}px 'Pretendard', 'Apple SD Gothic Neo', sans-serif`; }
+    }
+    // 내가 찍은 표시
+    for (const p of a.pins) { const x = px(p[0]) + s / 2, y = py(p[1]) + s / 2; c.fillStyle = LINE; c.fillRect(x - 1, y - 8, 2, 9); c.fillStyle = '#c9483a'; c.fillRect(x + 1, y - 8, 6, 4); }
+    // 내 위치와 방향
+    if (opts.me !== false) {
+      const x = px(Math.floor(w.player.x / T)) + s / 2, y = py(Math.floor((w.player.y - 1) / T)) + s / 2, d = w.player.dir, r = Math.max(5, s);
+      const tip = { up: [0, -1], down: [0, 1], left: [-1, 0], right: [1, 0] }[d] || [0, 1];
+      c.beginPath(); c.moveTo(x + tip[0] * r, y + tip[1] * r); c.lineTo(x - tip[0] * r * 0.6 + tip[1] * r * 0.7, y - tip[1] * r * 0.6 + tip[0] * r * 0.7); c.lineTo(x - tip[0] * r * 0.6 - tip[1] * r * 0.7, y - tip[1] * r * 0.6 - tip[0] * r * 0.7); c.closePath();
+      c.fillStyle = '#c9483a'; c.fill(); c.lineWidth = 2; c.strokeStyle = LINE; c.stroke();
+    }
+    return { s, x0: V.x0, y0: V.y0, cols: V.cols, rows: V.rows };
+  }
+
+  IW.Atlas = { C, WALKED, PINS, classOf, zoneOf, reveal, arrival, state, step, met, togglePin, stats, save, clear, load, pack, unpack, draw, viewOf, keyOf };
+})(globalThis);
+
 // ---- src/gen4/iw4.js ----
 /* IW4 — "답이 이야기의 모양을 정하는 세계" (시제품: 엔진 2개)
    질문마다 세계 안의 역할이 하나씩 있다. 같은 역할을 두 질문이 나눠 갖지 않는다.
@@ -11679,539 +11909,6 @@ body.touch .pad {
   }
 
   IW.Story4 = { setup, begin, update, talk, spot, objectiveText, faint, drawUnder, drawOver, refresh, applyRows, say, ask, walkTo, npc, px, tileOf, dirTo, startDuel, startDefend, startSneak, startObserve, endEnc, finish, ev, setRow, onTidal, sneakSees };
-})(globalThis);
-
-// ---- src/gen6/facets.js ----
-/* IW6 research foundation. No shared-code or save routing until a tile slice is reviewed. */
-(function (g) {
-  const N = (g.IW = g.IW || {}).IW6 = {};
-  N.schema = 'IW6-v1';
-  N.values = {
-    dist: ['near','open','slow','far'], expr: ['open','mask','deflect','later'],
-    conf: ['confront','endure','withdraw','understand'], val: ['principle','people','heart','future'],
-    fear: ['disliked','fail','loss','stuck'], joy: ['together','immersed','new','helpful'],
-    mask: ['bright','calm','strong','unknown','same'], regret: ['unsaid','missed','ended','none'],
-    wish: ['understood','free','safe','grow'], cope: ['reach','brood','guard','leave']
-  };
-  // Every row combines answers; values describe world rules, never the person.
-  N.facetRules = {
-    branching: { dist: [3,2,1,0], joy: [2,0,3,1] },
-    privacy: { mask: [1,2,3,4,0], expr: [0,3,1,2], fear:[2,1,3,0] },
-    mediation: { conf: [0,1,2,3], val: [0,3,1,2], wish:[3,1,2,0] },
-    archive: { regret: [3,2,4,0], val: [2,1,0,3], fear:[2,0,3,1] },
-    urgency: { cope: [3,2,1,0], conf: [3,1,0,2] }
-  };
-  N.interpret = function (t) {
-    for (const [k, vals] of Object.entries(N.values)) if (!vals.includes(t[k])) throw Error('Invalid trait: ' + k);
-    const out = {};
-    for (const [facet, rules] of Object.entries(N.facetRules)) {
-      out[facet] = Object.entries(rules).reduce((n, [k, weights]) => n + weights[N.values[k].indexOf(t[k])], 0);
-    }
-    return out;
-  };
-  N.random = function (seed, stage) {
-    let s = (seed ^ Math.imul(stage, 0x9e3779b1)) >>> 0;
-    return () => { s = (s + 0x6D2B79F5) | 0; let t = Math.imul(s ^ s >>> 15, 1 | s); t ^= t + Math.imul(t ^ t >>> 7, 61 | t); return ((t ^ t >>> 14) >>> 0) / 4294967296; };
-  };
-})(globalThis);
-
-// ---- src/gen6/places.js ----
-(function (N) {
-  // Contracts, not rendered props: layout/dress must later realize these objects.
-  N.places = {
-    gate: { name: '축제 문', purpose: '반납된 가면을 분류하는 곳', objects: ['return-rack','empty-hook'] },
-    bell: { name: '종 수리소', purpose: '울리지 않는 종에서 마지막 행렬의 시각을 확인', objects: ['bell','repair-ledger'] },
-    post: { name: '반송 우체국', purpose: '도착하지 못한 초대장의 수신인을 찾음', objects: ['mailbox','returned-letter'] },
-    dye: { name: '염색 공방', purpose: '가면 안쪽의 염료로 주인을 구별', objects: ['dye-vat','drying-rack'] },
-    court: { name: '행렬 대기마당', purpose: '문지기와 행렬의 통행을 협의', objects: ['barrier','queue-rope'] },
-    archive: { name: '지난 축제 기록실', purpose: '문지기와 수선공 사이에 남은 약속을 확인', objects: ['ledger','paired-masks'] },
-    stage: { name: '빈 무대', purpose: '관객 앞에서 가면의 주인을 결정', objects: ['curtain','mask-stand'] },
-    garden: { name: '막 뒤 정원', purpose: '당사자끼리 가면의 주인을 결정', objects: ['bench','mask-stand'] }
-  };
-})(IW.IW6);
-
-// ---- src/gen6/beats/masks.js ----
-(function (N) {
-  // Witnesses produce evidence by different actions, tied to the place's function.
-  N.evidence = [
-    { kind: 'bell', id: 'last-chime', text: '고장 난 종의 기록과 행렬 시각이 어긋나 있다.', method: 'compare-clock', object: 'repair-ledger' },
-    { kind: 'post', id: 'unsent-invitation', text: '반송된 초대장에 가면 안쪽과 같은 표식이 있다.', method: 'match-address', object: 'returned-letter' },
-    { kind: 'dye', id: 'inside-colour', text: '겉칠 아래에 다른 공방의 색이 남아 있다.', method: 'wash-pigment', object: 'dye-vat' }
-  ];
-  N.endings = {
-    shared: '문지기가 줄을 걷는다. 수선공과 함께 가면을 반납대에 건다.',
-    claimed: '빈 걸이에 가면을 걸고, 누구의 것이었는지 기록을 남긴다.',
-    quiet: '행렬이 지나간 뒤 가면을 돌려준다. 정원 쪽 문이 열려 있다.'
-  };
-})(IW.IW6);
-
-// ---- src/gen6/story.js ----
-(function (N) {
-  N.generate = function (traits, seed) {
-    if (!Number.isInteger(seed) || seed < 0 || seed > 0xffffffff) throw Error('Invalid seed');
-    const f = N.interpret(traits), R = N.random(seed, 2);
-    const e = N.evidence[(f.archive + f.privacy + Math.floor(R() * 3)) % 3];
-    const access = e.kind === 'dye' ? 'court' : (f.mediation >= 4 ? 'dye' : 'court');
-    const venue = traits.wish==='free'?'garden':(f.privacy + f.mediation) % 2 ? 'garden' : 'stage';
-    const memory = f.archive >= 3 || traits.joy === 'new' || traits.cope === 'brood' || traits.wish==='grow' || ['loss','stuck'].includes(traits.fear);
-    const nodes = [], beats = [], edges = [];
-    const place = (id, kind, why, owner) => {
-      nodes.push({ id, kind, why, owner, purpose: N.places[kind].purpose,
-        objects: N.places[kind].objects.map(kind => ({ kind, why: id + ':' + why })) });
-    };
-    const choice = (id, label, give, effect, needs) => ({ id, label, give, effect, needs: needs || [] });
-    place('entry', 'gate', 'arrival', 'maker');
-    place('evidence', e.kind, e.id, 'witness');
-    place('access', access, 'passage', 'keeper');
-    if (memory) place('memory', 'archive', 'old-promise', 'maker');
-    place('final', venue, 'return-mask', 'keeper');
-    const relation = f.mediation >= 6 || traits.joy === 'together' ? 'care' : 'debt';
-    beats.push({ id: 'arrival', place: 'entry', actor: 'maker', object: 'empty-hook', requires: [],
-      text: '반납대에 가면 하나가 비었다. 문지기는 행렬이 끝나기 전에 주인을 확인하려 한다.',
-      choices: [choice('accept', '빈 걸이를 살핀다', ['started'], {})] });
-    beats.push({ id: e.id, place: 'evidence', actor: 'witness', object: e.object, requires: traits.wish==='grow'?['started','promise']:['started'], text: e.text,
-      choices: [choice(e.method, '기록과 흔적을 맞춰 본다', ['proof'], { openness: 1 }),
-        choice('ask-witness', '증인과 함께 확인한다', ['proof'], { trust: 1 })] });
-    const choices = [choice('claim', '확인한 흔적으로 통행을 요구한다', ['pass'], { openness: 2 }, ['proof']),
-      choice('repair', '행렬 준비를 도와 통행을 얻는다', ['pass'], { trust: 1 })];
-    if (relation === 'care' || memory) choices.push(Object.assign(
-      choice('mediate', '수선공과 문지기를 함께 부른다', ['pass'], { trust: 2 }, ['proof']),
-      { relationOrToken: { a: 'maker', b: 'keeper', kind: 'care', token: 'promise' } }));
-    if(traits.joy==='helpful'){choices.find(c=>c.id==='repair').effect={trust:2};choices.find(c=>c.id==='repair').label='함께 행렬 준비를 마친다';}
-    if(traits.cope==='guard')choices.splice(choices.findIndex(c=>c.id==='repair'),1);
-    if(traits.cope==='leave'){const c=choices.find(c=>c.id==='repair');c.id='after-procession';c.label='기록을 남기고 행렬이 지나기를 기다린다';c.effect={openness:1};c.needs=['proof'];}
-    beats.push({ id: 'passage', place: 'access', actor: 'keeper', object: N.places[access].objects[0], requires: traits.cope==='brood'?['started','proof']:['started'],
-      text: access === 'court' ? '문지기가 끊어진 행렬 줄을 붙잡고 있다.' : '염료가 마르지 않아 행렬의 가면이 나가지 못한다.', choices });
-    if (memory) beats.push({ id: 'old-promise', place: 'memory', actor: 'maker', object: 'paired-masks', requires: ['started'],
-      text: '기록 속 두 가면은 수선공과 문지기가 함께 만들었다.',
-      choices: [choice('remember', '함께 만든 기록을 가져간다', ['promise','shortcut'], { trust: 1 })] });
-    const finalNeeds=['proof','pass',...(traits.fear==='loss'?['promise']:traits.fear==='stuck'?['shortcut']:[])];
-    beats.push({ id: 'return-mask', place: 'final', actor: 'keeper', object: 'mask-stand', requires: finalNeeds,
-      text: '돌려받은 가면을 어디에 남길까.', choices: [choice('return', '가면을 반납대에 건다', ['finished'], {})] });
-    const link = (a, b, kind, requires = []) => edges.push({ a, b, kind, requires });
-    // Two causally different route structures; no coordinates/colours used to claim diversity.
-    const parallel = traits.dist === 'near' || traits.dist === 'open';
-    if (traits.dist === 'far') { link('entry','access','quiet-walk'); link('access','evidence','work-route'); }
-    else { link('entry', 'evidence', 'street'); link(parallel ? 'entry' : 'evidence', 'access', parallel ? 'alley' : 'work-route'); }
-    if (traits.dist === 'near') link('evidence','access','festival-walk');
-    if (memory) {
-      link(f.privacy >= 4 ? 'access' : 'entry', 'memory', f.privacy >= 4 ? 'hidden' : 'street');
-      link('memory', 'evidence', 'shortcut', ['shortcut']);
-    }
-    link('access', 'final', f.urgency >= 4 ? 'procession-gate' : 'door', finalNeeds);
-    return { schema: N.schema, seed, theme: 'masks', facets: f, start: 'entry', nodes, edges, beats,
-      npcs: [{ id: 'maker', goal: '빈 걸이를 채운다', home: 'entry' },
-        { id: 'keeper', goal: '행렬을 무사히 출발시킨다', home: 'access' },
-        { id: 'witness', goal: '잘못 남은 기록을 바로잡는다', home: 'evidence' }],
-      relations: [{ a: 'maker', b: 'keeper', kind: relation }],
-      provenance: N.facetRules };
-  };
-})(IW.IW6);
-
-// ---- src/gen6/check.js ----
-(function (N) {
-  N.initial = w => ({ at: w.start, done: [], flags: [], trust: 0, openness: 0, ending: null });
-  const has = (s, req) => req.every(x => s.flags.includes(x));
-  N.actions = function (w, s) {
-    if (s.ending) return [];
-    const out = [];
-    for (const e of w.edges) if ((e.a === s.at || e.b === s.at) && has(s, e.requires))
-      out.push({ type: 'move', to: e.a === s.at ? e.b : e.a });
-    for (const b of w.beats) if (b.place === s.at && !s.done.includes(b.id) && has(s, b.requires))
-      for (const c of b.choices) {
-        const r = c.relationOrToken;
-        const relationOK = !r || s.flags.includes(r.token) || w.relations.some(x => x.a === r.a && x.b === r.b && x.kind === r.kind);
-        if (has(s, c.needs) && relationOK) out.push({ type: 'choose', beat: b.id, choice: c.id });
-      }
-    return out;
-  };
-  N.step = function (w, s, action) {
-    if (!N.actions(w, s).some(a => JSON.stringify(a) === JSON.stringify(action))) throw Error('Illegal action');
-    const next = JSON.parse(JSON.stringify(s));
-    if (action.type === 'move') next.at = action.to;
-    else {
-      const b = w.beats.find(b => b.id === action.beat), c = b.choices.find(c => c.id === action.choice);
-      next.done.push(b.id); next.done.sort(); next.flags = [...new Set([...s.flags, ...c.give])].sort();
-      for (const [k, v] of Object.entries(c.effect)) next[k] += v;
-      if (next.flags.includes('finished')) next.ending = next.trust >= 3 ? 'shared' : next.openness >= 2 ? 'claimed' : 'quiet';
-    }
-    return next;
-  };
-  // Exhaustive graph-state search, including movement and all choices. This is NOT a tile play bot.
-  N.explore = function (w, limit = 20000) {
-    const first = N.initial(w), states = [first], ids = new Map([[JSON.stringify(first), 0]]), links = [], parents = [null];
-    for (let i = 0; i < states.length; i++) {
-      links[i] = [];
-      for (const a of N.actions(w, states[i])) {
-        const s = N.step(w, states[i], a), key = JSON.stringify(s);
-        if (!ids.has(key)) { ids.set(key, states.length); states.push(s); parents.push([i, a]); }
-        links[i].push(ids.get(key));
-        if (states.length > limit) throw Error('State budget exceeded');
-      }
-    }
-    // Every reachable state must have a route to an ending (cycles alone are not progress).
-    const reverse = states.map(() => []), good = new Set(), q = [];
-    links.forEach((ls, i) => ls.forEach(j => reverse[j].push(i)));
-    states.forEach((s, i) => { if (s.ending) { good.add(i); q.push(i); } });
-    for (let i = 0; i < q.length; i++) for (const p of reverse[q[i]]) if (!good.has(p)) { good.add(p); q.push(p); }
-    const traces = {};
-    states.forEach((s, i) => {
-      if (!s.ending || traces[s.ending]) return;
-      const trace = []; let j = i;
-      while (parents[j]) { const [p, a] = parents[j]; trace.push(a); j = p; }
-      traces[s.ending] = trace.reverse();
-    });
-    const executed = new Set();
-    states.forEach(s => N.actions(w,s).filter(a => a.type === 'choose').forEach(a => executed.add(a.beat + '/' + a.choice)));
-    const unreachableChoices = w.beats.flatMap(b => b.choices.filter(c => !executed.has(b.id + '/' + c.id)).map(c => b.id + '/' + c.id));
-    return { states: states.length, stranded: states.length - good.size, unreachableChoices, endings: Object.keys(traces).sort(), traces };
-  };
-  N.validate = function (w) {
-    const errors = [], nodes = new Set(w.nodes.map(p => p.id)), actors = new Set(w.npcs.map(n => n.id));
-    const gifts = new Set(w.beats.flatMap(b => b.choices.flatMap(c => c.give)));
-    if (!nodes.has(w.start)) errors.push('start missing');
-    if (nodes.size !== w.nodes.length) errors.push('duplicate place');
-    if (new Set(w.beats.map(b => b.id)).size !== w.beats.length) errors.push('duplicate beat');
-    for (const n of w.nodes) {
-      if (!w.beats.some(b => b.place === n.id && b.id === n.why)) errors.push('place without event: ' + n.id);
-      if (!actors.has(n.owner)) errors.push('owner missing: ' + n.id);
-      if (n.objects.some(o => !o.why)) errors.push('object reason missing');
-    }
-    for (const b of w.beats) {
-      const p = w.nodes.find(p => p.id === b.place);
-      if (!p || !p.objects.some(o => o.kind === b.object)) errors.push('event object missing: ' + b.id);
-      if (!actors.has(b.actor)) errors.push('actor missing');
-      if (!b.choices.length) errors.push('no choice');
-      for (const req of [...b.requires, ...b.choices.flatMap(c => c.needs)]) if (!gifts.has(req)) errors.push('unproducible token: ' + req);
-    }
-    for (const e of w.edges) {
-      if (!nodes.has(e.a) || !nodes.has(e.b)) errors.push('edge endpoint missing');
-      for (const r of e.requires) if (!gifts.has(r)) errors.push('unproducible edge key: ' + r);
-    }
-    for (const r of w.relations) if (!actors.has(r.a) || !actors.has(r.b)) errors.push('relation endpoint missing');
-    if (errors.length) return errors;
-    const result = N.explore(w);
-    if (result.stranded) errors.push('stranded states: ' + result.stranded);
-    if (result.unreachableChoices.length) errors.push('unreachable choices: ' + result.unreachableChoices.join(','));
-    if (!result.endings.length) errors.push('no ending');
-    return errors;
-  };
-  // Labelled feature distance, NOT graph edit distance. Ignores seed, names, prose, facets and IDs.
-  N.features = function (w) {
-    const kind = id => w.nodes.find(n => n.id === id).kind;
-    return [...w.nodes.map(n => 'place:' + n.kind),
-      ...w.edges.map(e => 'edge:' + [kind(e.a), kind(e.b)].sort().join('/') + ':' + e.kind + ':' + e.requires.slice().sort().join(',')),
-      ...w.beats.flatMap(b => b.choices.map(c => 'event:' + kind(b.place) + ':' + c.id + ':' + [...b.requires, ...c.needs].sort().join(',') + '>' + c.give.join(',') + ':' + JSON.stringify(c.effect))),
-      ...w.relations.map(r => 'relation:' + r.kind)].sort();
-  };
-  N.distance = function (a, b) {
-    const A = new Set(N.features(a)), B = new Set(N.features(b));
-    return [...A].filter(x => !B.has(x)).length + [...B].filter(x => !A.has(x)).length;
-  };
-})(IW.IW6);
-
-// ---- src/gen6/weapon.js ----
-(function (N) {
-  N.toolUses = {
-    swing: ['덧칠을 조심스럽게 걷어 낸다','겹쳐 붙은 축제 표식을 갈라 아래의 기록을 드러냈다.',{openness:2}],
-    shield: ['흔적이 지워지지 않게 가린다','바람을 막아 흩어지는 종이의 두 표식을 맞췄다.',{trust:2}],
-    light: ['겹쳐진 흔적에 빛을 비춘다','종이 뒤의 필적이 비쳐 보인다. 보관실로 잇는 표식도 발견했다.',{openness:1}],
-    sound: ['남은 울림을 따라간다','벽 뒤의 빈 공간이 응답했다. 반송 기록과 같은 울림이다.',{trust:1}],
-    dash: ['바람으로 말라붙은 흔적을 턴다','먼지가 걷히고 옛 통로의 표식이 드러났다.',{openness:2}],
-    throw: ['높은 곳의 기록을 내려온다','처마에 걸린 기록을 꺼냈다. 지름길의 잠금 표식이 있다.',{openness:1}],
-    pet: ['작은 동행에게 흔적을 맡긴다','작은 동행이 사람들이 놓친 자국을 찾아 돌아왔다.',{trust:2}],
-    warm: ['굳어 버린 흔적을 녹인다','접착제가 부드러워지고 겹친 두 기록이 상하지 않게 떨어졌다.',{trust:2}]
-  };
-  N.plan = function (traits, seed, free, opts) {
-    opts=opts||{}; free=free||{};
-    const w=N.generate(traits,seed);
-    const interpreted=IW.Weapons.make(free.thing||'',traits,opts.weaponKey||null,free.feel);
-    // Reconstruct from the symbolic key, including unknown-input/feel weapons.
-    // Neither owner nor visitor receives an arbitrary input word in the world text.
-    w.gen=6; w.weapon=IW.Weapons.make('',traits,interpreted.key);
-    w.weapon.from=null;w.weapon.mod=Object.assign({range:1,cd:1},w.weapon.mod||{});
-    w.weapon.how=N.toolUses[w.weapon.verb][0]+' · 기록 가까이에서 X로 사용';
-    w.weapon.use=w.weapon.how;w.weapon.trait=N.toolUses[w.weapon.verb][0];
-    const e=w.beats.find(b=>b.place==='evidence'), use=N.toolUses[w.weapon.verb];
-    e.choices.push({id:'tool-'+w.weapon.verb,label:use[0],give:['proof','shortcut'],effect:use[2],needs:['started'],tool:true});
-    w.name=['남겨진','다시 만나는','안쪽의','아직 열려 있는'][seed%4]+' '+N.places[w.nodes.find(n=>n.id==='evidence').kind].name;
-    w.sentence='비어 있는 가면 걸이에서 시작해, 서로 다른 기록을 따라 주인을 찾아가는 축제.';
-    w.axes={landscape:'alley',time:traits.expr==='open'?'dusk':'night',weather:traits.expr==='later'?'fog':'clear'};
-    w.order=['shake','memory'];
-    w.endings=Object.fromEntries(Object.entries(N.endings).map(([id,line],i)=>[id,{title:['함께 남긴 자리','이름을 남긴 자리','행렬이 지난 뒤'][i],line}]));
-    w.context={wish:traits.wish,fear:traits.fear,joy:traits.joy,cope:traits.cope,dist:traits.dist};
-    const goals={understood:'가면 안쪽에 남은 이름을 확인한다',free:'행렬 밖으로 나갈 문을 연다',safe:'남은 가면이 모두 돌아오기를 기다린다',grow:'지난 축제에서 잘못 적은 기록을 고친다'};
-    w.npcs[0].goal=goals[traits.wish];
-    w.beats[0].text+=' 이음은 '+goals[traits.wish]+'.';
-    return w;
-  };
-  N.describe = w=>({name:w.name,lines:[['세계','가면 축제의 안쪽'],['발단','반납대에 가면 하나가 비어 있다'],['길',w.edges.length+'개의 연결과 '+w.nodes.length+'개의 장소'],['도구',w.weapon.name+' · '+N.toolUses[w.weapon.verb][0]],['기록','답 원문 없이, 세계에서 일어난 일로 서로를 알아갑니다.']]});
-})(IW.IW6);
-
-// ---- src/gen6/dress.js ----
-(function(N){
-  const visuals={'return-rack':'stall','empty-hook':'sign',bell:'beacon','repair-ledger':'sign',mailbox:'mailbox','returned-letter':'mailbox','dye-vat':'barrel','drying-rack':'netrack',barrier:'fence','queue-rope':'bollard',ledger:'mailbox','paired-masks':'stall',curtain:'shelter','mask-stand':'sign',bench:'bench'};
-  N.dress=function(S,w,seed){
-    const L=S.iw6,occupied=new Set(),R=N.random(seed,40),key=(x,y)=>x+','+y;
-    const obj=(k,x,y,why,extra)=>{
-      const o=Object.assign({k,x,y,why},extra||{}),fp=IW.Scene.footprint(o);
-      const service=!/rim|workshop|supplies|garden|waiting|service-light/.test(why);
-      if(service&&(!S.ter[y+1]||S.ter[y+1][x]==='sea'||occupied.has(key(x,y+1))))return false;
-      const approach=[];
-      if(service){const centre=L.centres[why.split(':')[0]];if(centre){let a=x,b=y+1;approach.push([a,b]);while(a!==centre[0]){a+=Math.sign(centre[0]-a);approach.push([a,b]);}while(b!==centre[1]+1){b+=Math.sign(centre[1]+1-b);approach.push([a,b]);}if(approach.some(([a,b])=>occupied.has(key(a,b))||S.ter[b][a]==='sea'))return false;}}
-      if(fp.some(([a,b])=>!S.ter[b]||!S.ter[b][a]||S.ter[b][a]==='sea'||occupied.has(key(a,b))||L.reserved.has(key(a,b))))return false;
-      fp.forEach(([a,b])=>occupied.add(key(a,b)));if(service)approach.forEach(([a,b])=>{L.reserved.add(key(a,b));L.reserved.add(key(a+1,b));});S.objects.push(o);return o;
-    };
-    for(const n of w.nodes){
-      const [x,y]=L.centres[n.id],b=w.beats.find(b=>b.place===n.id);
-      // Service fronts face the clear island centre; supporting objects attach to the work area.
-      const k=visuals[b.object]||'sign';
-      let main;
-      for(const[dx,dy]of [[-3,-3],[2,-3],[-4,1],[3,1],[-2,3],[2,3]]){
-        main=obj(k,x+dx,y+dy,n.id+':'+b.object,k==='fence'?{n:2}:{});if(main)break;
-      }
-      if(!main)throw Error('IW6 required object placement failed: '+n.id);
-      L.targets[n.id]=[main.x,main.y];
-      if(n.id==='evidence')for(let i=0;i<2;i++){
-        let clue;
-        for(const[dx,dy]of [[-4,3],[4,3],[-5,0],[5,1],[-3,4],[3,4]]){clue=obj('sign',x+dx,y+dy,'evidence:trace-'+i);if(clue)break;}
-        if(!clue)throw Error('IW6 clue placement failed');L.clues.push({id:'s6clue'+i,at:[clue.x,clue.y]});
-      }
-      obj('house',x-5,y-5,n.id+':workshop',{w:4,h:2,door:2,roof:S.palette.roofs[seed%S.palette.roofs.length]});
-      if(n.kind==='dye'||n.kind==='court'){obj('crate',x-5,y-2,n.id+':supplies');obj('barrel',x-4,y-2,n.id+':supplies');}
-      if(n.kind==='post'||n.kind==='archive')obj('bench',x+3,y-3,n.id+':waiting');
-      if(n.kind==='garden')obj('flowers',x-5,y+2,n.id+':garden',{w:2,h:2,n:8});
-      obj('lamp',x+5,y-1,n.id+':service-light');
-      for(const [a,b]of L.regions[n.id].cells){
-        if(Math.hypot(a-x,b-y)<5||R()>.16)continue;
-        // Trees grow at the island rim, away from service fronts and reserved routes.
-        if(!L.roads.has(key(a,b))&&![[1,0],[-1,0],[0,1],[0,-1]].some(([dx,dy])=>L.roads.has(key(a+dx,b+dy))))obj(R()<.7?'tree':'flowers',a,b,n.id+':rim');
-      }
-    }
-  };
-})(IW.IW6);
-
-// ---- src/gen6/layout.js ----
-(function (N) {
-  const W=96,H=64;
-  const key=(x,y)=>x+','+y;
-  N.layout=function(S,w,seed,attempt) {
-    const R=N.random(seed,30+attempt), jitter=()=>Math.floor(R()*5)-2;
-    const privacy=w.facets.privacy>=4;
-    const C={entry:[26+jitter(),47+jitter()],evidence:[27+jitter(),16+jitter()],access:[65+jitter(),45+jitter()],final:[83+jitter(),16+jitter()]};
-    if(w.nodes.some(n=>n.id==='memory')) C.memory=privacy?[54+jitter(),11+jitter()]:[9+jitter(),29+jitter()];
-    S.fill('sea');
-    const regions={}, reserved=new Set(), roads=new Set(), paths=[];
-    for(const n of w.nodes) {
-      const [cx,cy]=C[n.id], cells=[];
-      for(let y=cy-7;y<=cy+7;y++) for(let x=cx-8;x<=cx+8;x++) {
-        const angle=Math.atan2(y-cy,x-cx), radius=1+0.08*Math.sin(angle*3+(seed%7));
-        if(((x-cx)/8)**2+((y-cy)/6.8)**2<radius) {S.set(x,y,n.kind==='garden'?'meadow':'grass');cells.push([x,y]);}
-      }
-      regions[n.id]={at:C[n.id],cells};
-      for(let dy=-2;dy<=2;dy++)for(let dx=-2;dx<=2;dx++)reserved.add(key(cx+dx,cy+dy));
-    }
-    // A four-connected staircase raster gives real 2-tile-wide walks, never diagonal movement.
-    for(const e of w.edges) {
-      const a=C[e.a],b=C[e.b],cells=new Map();let [x,y]=a;
-      const push=()=>{for(const [dx,dy]of [[0,0],[1,0],[0,1],[1,1]]){const k=key(x+dx,y+dy);cells.set(k,[x+dx,y+dy]);roads.add(k);reserved.add(k);S.set(x+dx,y+dy,'boards');}};
-      push();
-      while(x!==b[0]||y!==b[1]) {
-        const tx=Math.abs(b[0]-a[0]),ty=Math.abs(b[1]-a[1]);
-        if(x!==b[0]&&(y===b[1]||Math.abs(x-a[0])/(tx||1)<=Math.abs(y-a[1])/(ty||1)))x+=Math.sign(b[0]-x);else y+=Math.sign(b[1]-y);
-        push();
-      }
-      const list=[...cells.values()], mid=list[Math.floor(list.length/2)];
-      // Block a whole band, including both corridor lanes, to prevent corner bypass.
-      const gate=e.requires.length?list.filter(([x,y])=>Math.abs(x-mid[0])+Math.abs(y-mid[1])<=3):[];
-      paths.push({edge:e,cells:list,gate,mid});
-    }
-    const last=C.final;
-    const anchors={};for(const id of ['start','comp','meet','cross','shake','memory','view','wild']){const p=id==='start'?C.entry:C.evidence;anchors[id]={x:p[0],y:p[1]+2};}
-    anchors.land={x:last[0],y:last[1]-5};
-    const out={ter:S.ter,elev:S.elev,palette:IW.SceneCompose.mixPal('alley',seed),objects:[],places:w.nodes.map(n=>({id:n.id,name:N.places[n.kind].name,line:n.purpose,area:[[C[n.id][0]-6,C[n.id][1]-5,C[n.id][0]+6,C[n.id][1]+5]]})),anchors,frags:[],signs:[],secret:null,landmark:'clocktower',meta:{iw6:true,attempt}};
-    out.iw6={centres:C,regions,reserved,roads,paths,targets:{},clues:[]};
-    N.dress(out,w,seed);
-    return out;
-  };
-  IW.SceneDefs.iw6_dynamic={w:W,h:H,landscape:'alley',build(S,w,seed,o){const result=N.layout(S,w,seed,o.attempt);N.lastLayout=result.iw6;return result;}};
-})(IW.IW6);
-
-// ---- src/gen6/build.js ----
-(function(N){
-  const key=(x,y)=>x+','+y;
-  N.applyGates=function(map,state){
-    const X=map.iw6;
-    for(const p of X.layout.paths)for(const[x,y]of p.gate){
-      const open=p.edge.requires.every(f=>state.flags.includes(f));
-      const row=map.rows[y];map.rows[y]=row.slice(0,x)+(open?X.base[y][x]:'W')+row.slice(x+1);
-    }
-  };
-  N.tileCheck=function(map){
-    const errors=[],X=map.iw6,all={flags:['started','proof','pass','promise','shortcut','finished']};
-    const reach=()=>IW.Collision.reachable(map,[],map.start.x,map.start.y);
-    N.applyGates(map,all);const r=reach();
-    for(const[id,at]of Object.entries(X.layout.centres))if(!r.tileReached(at[0],at[1]+2))errors.push('unreachable place '+id);
-    for(const[id,at]of Object.entries(X.layout.targets))if(!r.tileReached(at[0],at[1]+1))errors.push('blocked service front '+id);
-    for(const c of X.layout.clues)if(!r.tileReached(c.at[0],c.at[1]+1))errors.push('blocked clue '+c.id);
-    for(const o of map.sceneData.objs)if(!o.why)errors.push('unexplained object');
-    N.applyGates(map,N.initial(X.spec));
-    const closed=reach(),p=X.layout.centres.final;
-    if(closed.tileReached(p[0],p[1]+2))errors.push('final gate bypass');
-    for(const path of X.layout.paths)if(path.edge.kind==='shortcut'){
-      // The shortcut must be visibly gated; final access alone is insufficient evidence.
-      if(!path.gate.length)errors.push('shortcut missing gate');
-    }
-    return errors;
-  };
-  N.build=function(spec,seed){
-    const graphErrors=N.validate(spec);if(graphErrors.length)throw Error(graphErrors.join(';'));
-    let lastErrors=[];
-    for(let attempt=0;attempt<8;attempt++){
-      let map;try{map=IW.Scene.make('iw6_dynamic',spec,seed,attempt);}catch(e){if(attempt===7)throw e;continue;}
-      map.plan=null;map.name=spec.name;map.skill=IW.Skills.FROM_VERB[spec.weapon.verb];
-      map.iw6={spec,layout:N.lastLayout,base:map.rows.slice()};
-      map.spots=Object.entries(map.iw6.layout.targets).map(([id,at])=>({id:'s6event-'+id,tiles:[at],obj:true}));
-      map.spots.push(...map.iw6.layout.clues.map(c=>({id:c.id,tiles:[c.at],obj:true,discover:true})));
-      lastErrors=N.tileCheck(map);if(!lastErrors.length)return{map,story:{intro:[],objectives:{},spot:()=>null,discoverTotal:spec.nodes.length+2}};
-    }
-    throw Error('IW6 map validation failed: '+lastErrors.join(';'));
-  };
-})(IW.IW6);
-
-// ---- src/game/story6.js ----
-(function(g){
-  const IW=g.IW,N=IW.IW6,T=16;
-  const names={maker:'이음',keeper:'서온',witness:'단'};
-  const px=p=>({x:p[0]*T+8,y:p[1]*T+12});
-  const state=w=>w.flags.iw6;
-  const spec=w=>w.map.iw6.spec;
-  const ev=(w,e)=>w.events.push(e);
-  function refresh(w){
-    N.applyGates(w.map,state(w));
-    for(const n of w.npcs){
-      const home=spec(w).npcs.find(q=>q.id===n.id).home;
-      let destination=home;
-      if(state(w).flags.includes('promise')&&n.id==='maker')destination='access';
-      if(state(w).flags.includes('pass')&&n.id==='keeper')destination='final';
-      const c=w.map.iw6.layout.centres[destination],target=px([c[0]+2,c[1]+1]);
-      if(n.destination!==destination){
-        n.destination=destination;
-        n.path=IW.Tale.path(w.map,{x:Math.floor(n.x/T),y:Math.floor((n.y-1)/T)},{x:Math.floor(target.x/T),y:Math.floor((target.y-1)/T)});
-      }
-    }
-  }
-  function setup(w){
-    w.inner=false;w.s4=null;w.tale=null;w.s6={lastPlace:null};w.flags.hasBookmark=true;
-    if(!w.flags.iw6)w.flags.iw6=N.initial(spec(w));
-    w.weapon=spec(w).weapon;w.skill=w.map.skill;
-    w.npcs=spec(w).npcs.map((n,i)=>{
-      const c=w.map.iw6.layout.centres[n.home],p=px([c[0]+2,c[1]+1]);
-      return{id:n.id,name:names[n.id],kind:'gen',x:p.x,y:p.y,dir:'down',soft:true,lookCode:10+i*33,destination:n.home};
-    });
-    refresh(w);
-    if(state(w).ending&&w.flags.finished)ev(w,{type:'complete'});
-  }
-  function say(w,text,cb){IW.Game.say(w,[[null,text]],cb);}
-  function begin(w){say(w,'축제 마지막 날, 반납대에 가면 하나가 비어 있다. 이음이 빈 걸이를 바라보고 있다.\n이동: 방향키 · 살펴보기: Z/Space · 도구: X');}
-  function complete(w){
-    const s=state(w);w.flags.ending=s.ending;w.flags.finished=true;w.flags.landmarkOn=true;w.finishedAt=w.playTime;
-    say(w,N.endings[s.ending],()=>{ev(w,{type:'ending',id:s.ending});ev(w,{type:'complete'});});
-  }
-  function chooseAction(w,action,tool){
-    w.flags.iw6=N.step(spec(w),state(w),action);
-    ev(w,{type:'choice'});ev(w,{type:'objective',key:'iw6'});refresh(w);
-    if(state(w).ending)return complete(w);
-    const lines={arrival:'빈 걸이 안쪽에 같은 축제 표식이 남아 있다. 기록이 있는 곳부터 살펴보자.',passage:'서온이 통행 줄을 걷는다. 마지막 장소로 가는 문이 열렸다.','old-promise':'이음이 기록을 읽고 서온을 만나러 간다. 보관실의 귀환 통로도 열렸다.'};
-    say(w,tool?N.toolUses[w.weapon.verb][1]:(lines[action.beat]||'두 기록이 하나의 가면을 가리킨다. 문지기에게 보여 줄 수 있겠다.'));
-  }
-  function visit(w,id){
-    const s=state(w);if(s.at===id)return;
-    const move={type:'move',to:id};
-    if(N.actions(spec(w),s).some(a=>a.type==='move'&&a.to===id))w.flags.iw6=N.step(spec(w),s,move);
-  }
-  function event(w,id){
-    if(w.flags.finished)return say(w,'축제는 끝났지만 이곳에 남긴 기록은 그대로다. 다른 길도 둘러볼 수 있다.');
-    const s=state(w),b=spec(w).beats.find(b=>b.place===id);
-    if(s.at!==id)return true;
-    if(s.done.includes(b.id)){say(w,id==='evidence'?'표식은 이미 확인했다. 서온에게 기록을 가져가자.':'이곳에서 한 일은 기록에 남아 있다.');return true;}
-    let actions=N.actions(spec(w),s).filter(a=>a.type==='choose'&&a.beat===b.id);
-    actions=actions.filter(a=>!b.choices.find(c=>c.id===a.choice).tool);
-    if(id==='evidence'&&!(w.flags.s6clue0&&w.flags.s6clue1))return say(w,'기록의 앞뒤가 맞지 않는다. 작업장 양쪽의 작은 표식을 살펴보자. X로 도구를 써서 확인하는 길도 있다.');
-    if(!actions.length)return say(w,b.requires.includes('proof')?'먼저 서로 다른 두 흔적이 같은 가면인지 확인해야 한다.':'빈 걸이에서 시작된 일을 먼저 들어 보자.');
-    say(w,b.text,()=>{
-      w.choice={who:names[b.actor],q:id==='final'?'이 가면을 반납대에 남길까?':N.places[spec(w).nodes.find(n=>n.id===id).kind].name,
-        sel:0,lastY:0,options:actions.map(a=>({label:b.choices.find(c=>c.id===a.choice).label})),pick(i){
-          const a=actions[i];if(!a)return;w.choice=null;chooseAction(w,a,false);
-        }};
-    });return true;
-  }
-  function spot(w,id){
-    if(id==='s6clue0'||id==='s6clue1'){
-      w.flags[id]=true;w.found.gen.add(id);ev(w,{type:'found',count:w.found.gen.size,total:w.story.discoverTotal});
-      const e=spec(w).nodes.find(n=>n.id==='evidence').kind;
-      const clues={bell:['종 장부에는 마지막 울림이 행렬 출발보다 이르다고 적혀 있다.','가면의 표식에는 행렬이 끝난 시각이 새겨져 있다. 누군가 기록을 바꿨다.'],post:['반송 봉투의 받는 사람은 지워졌지만 안쪽에 두 번 접은 자국이 있다.','가면 안쪽의 접힌 종이에도 같은 두 줄이 있다. 초대장은 주인에게 닿지 않았다.'],dye:['겉면의 붉은 염료 아래 푸른 실이 남아 있다.','건조대 기록의 푸른 실은 이음과 서온이 함께 만든 가면에만 쓰였다.']};
-      say(w,clues[e][id==='s6clue0'?0:1]);return true;
-    }
-    if(id.startsWith('s6event-'))return event(w,id.slice(8));return true;
-  }
-  function talk(w,n){
-    const s=state(w),b=spec(w).beats.find(b=>b.place===s.at&&b.actor===n.id&&!s.done.includes(b.id));
-    if(b)return event(w,b.place);
-    const rel=spec(w).relations[0].kind;
-    const texts={maker:s.flags.includes('promise')?'이 약속을 잊은 건 나만이 아니었겠지. 이번에는 내가 먼저 가 볼게.':'돌아오는 가면을 하나씩 고쳐 줬어. 그런데 마지막 하나가 아직 오지 않았어.',
-      keeper:s.flags.includes('pass')?'문은 열어 둘게. 어떤 방식으로 돌려줄지는 네가 정해.':rel==='care'?'이음이 만든 가면이라면 내가 알아볼 수 있어. 확인할 흔적이 필요해.':'이음에게 갚지 못한 일이 있어. 하지만 지금은 행렬을 먼저 보내야 해.',
-      witness:s.flags.includes('proof')?'표식이 같다는 것과 주인이 같은 건 다른 말일 수도 있어. 마지막 이야기를 들어 줘.':'기록이 서로 맞지 않아. 양쪽 표식을 보거나 도구로 겹친 흔적을 확인해 봐.'};
-    say(w,texts[n.id]||'행렬이 지나가기를 기다린다.');
-  }
-  function tool(w){
-    const s=state(w),p=w.map.iw6.layout.targets.evidence,q=px(p);
-    const range={swing:30,shield:36,light:56,sound:80,dash:50,throw:96,pet:112,warm:36}[w.weapon.verb];
-    if(Math.hypot(w.player.x-q.x,w.player.y-q.y)>range||!w.map.lineClear(w.player.x,w.player.y-7,q.x,q.y+8))return;
-    const a=N.actions(spec(w),s).find(a=>a.type==='choose'&&a.choice==='tool-'+w.weapon.verb);
-    if(!a)return;
-    const [dx,dy]=IW.Interact.DIRS[w.player.dir];
-    if(['swing','shield','throw','dash'].includes(w.weapon.verb)&&((q.x-w.player.x)*dx+(q.y-w.player.y)*dy)<0)return;
-    if(['throw','pet','dash'].includes(w.weapon.verb)){
-      w.s6.pendingTool={action:a,target:q,until:w.t+2};
-      if(w.petE){w.petE.tx=q.x;w.petE.ty=q.y+8;}
-    }else chooseAction(w,a,true);
-  }
-  function update(w,dt){
-    const X=w.map.iw6,p=w.player,s=state(w);
-    if(w.s6.pendingTool){
-      const task=w.s6.pendingTool,q=task.target,actor=w.weapon.verb==='throw'?w.proj:w.weapon.verb==='pet'?w.petE:p;
-      if(actor&&Math.hypot(actor.x-q.x,actor.y-q.y)<27){w.s6.pendingTool=null;chooseAction(w,task.action,true);}
-      else if(w.t>task.until)w.s6.pendingTool=null;
-    }
-    for(const[id,r]of Object.entries(X.layout.regions))if(r.cells.some(([x,y])=>x===Math.floor(p.x/T)&&y===Math.floor((p.y-3)/T))){
-      visit(w,id);if(!w.found.gen.has(id)){w.found.gen.add(id);ev(w,{type:'found',count:w.found.gen.size,total:w.story.discoverTotal});}
-      break;
-    }
-    for(const n of w.npcs){
-      if(n.id==='maker'&&spec(w).context.joy==='together'&&state(w).flags.includes('started')&&!state(w).flags.includes('promise')&&!w.flags.finished){
-        n.repath=(n.repath||0)-dt;
-        if(n.repath<=0&&Math.hypot(n.x-p.x,n.y-p.y)>40){
-          n.repath=1.2;n.path=IW.Tale.path(w.map,{x:Math.floor(n.x/T),y:Math.floor((n.y-1)/T)},{x:Math.floor(p.x/T),y:Math.floor((p.y-1)/T)});
-          if(n.path&&n.path.length>2)n.path=n.path.slice(0,-2);
-        }
-      }
-      n.walking=false;if(!n.path||!n.path.length)continue;
-      const q=n.path[0],before={x:n.x,y:n.y};IW.Collision.step4(n,q.x,q.y,38*dt);
-      if(n.x===q.x&&n.y===q.y)n.path.shift();
-      const dx=n.x-before.x,dy=n.y-before.y;n.walking=!!(dx||dy);n.dir=dx?(dx>0?'right':'left'):dy?(dy>0?'down':'up'):n.dir;n.dist=(n.dist||0)+Math.abs(dx)+Math.abs(dy);n.frame=1+Math.floor(n.dist/6)%3;
-    }
-    IW.Scene.tick(w);
-    const objective=objectiveText(w);if(w.s6.objective!==objective){w.s6.objective=objective;ev(w,{type:'hud'});}
-  }
-  function objectiveText(w){const s=state(w),sp=spec(w);if(s.ending)return'이 세계에 남긴 기록을 친구와 나눠 보세요';if(!s.flags.includes('started'))return'축제 문 · 이음과 빈 가면 걸이를 살펴보기';if(!s.flags.includes('promise')&&(sp.context.wish==='grow'||(s.flags.includes('proof')&&sp.context.fear==='loss')))return'지난 축제 기록실 · 두 사람이 함께 만든 기록을 확인하기';if(!s.flags.includes('proof'))return N.places[sp.nodes.find(n=>n.id==='evidence').kind].name+' · 양쪽 흔적을 조사하거나 X로 도구 사용';if(!s.flags.includes('pass'))return N.places[sp.nodes.find(n=>n.id==='access').kind].name+' · 서온과 통행을 협의하기';if(sp.context.fear==='stuck'&&!s.flags.includes('shortcut'))return'지난 축제 기록실 · 닫힌 통로의 표식을 찾기';return N.places[sp.nodes.find(n=>n.id==='final').kind].name+' · 가면을 어디에 남길지 결정하기';}
-  function drawOver(c,w,t){
-    for(const path of w.map.iw6.layout.paths){if(!path.gate.length||path.edge.requires.every(f=>state(w).flags.includes(f)))continue;
-      for(const[x,y]of path.gate){c.fillStyle='#493847';c.fillRect(x*T,y*T,16,16);c.fillStyle='#d6b36b';c.fillRect(x*T+2,y*T+5,12,3);}
-    }
-    for(const[id,p]of Object.entries(w.map.iw6.layout.targets)){const b=spec(w).beats.find(b=>b.place===id);if(state(w).done.includes(b.id))continue;c.fillStyle='#f3d36b';c.fillRect(p[0]*T+6,p[1]*T-17+Math.sin(t*3),4,4);}
-  }
-  IW.Story6={setup,begin,update,talk,spot,tool,objectiveText,drawOver,event};
 })(globalThis);
 
 // ---- src/render/art.js ----
@@ -14695,7 +14392,6 @@ body.touch .pad {
     for (const b of world.shots) A.drawShot(c, b, t);
     if (world.inner) IW.Acts.drawOver(c, world, t, snap);
     if (world.s4 && IW.Story4) IW.Story4.drawOver(c, world, t, snap);
-    if (world.s6 && IW.Story6) IW.Story6.drawOver(c, world, t, snap);
 
     // 밤: 전체를 살짝 푸르게 가라앉히고, 등불만 따뜻하게 (만든 이의 답: 모두 잠든 밤)
     const vx0 = ox / k - 2, vy0 = oy / k - 2, vw0 = W / k + 4, vh0 = H / k + 4;
@@ -15268,7 +14964,6 @@ body.touch .pad {
     if (w.map.plan) IW.Acts.setup(w);
     if (w.map.tale) { w.tale = w.map.tale; IW.Tale.setup(w); }
     if (w.map.iw4 && IW.Story4) IW.Story4.setup(w); // IW4: 엔진 대본 진행기 // 내면 세계: 인물·그림자·조사할 것을 진행 상태에 맞춰 세운다
-    if (w.map.iw6 && IW.Story6) IW.Story6.setup(w);
     IW.Render.prepare(w);
   }
 
@@ -15288,7 +14983,6 @@ body.touch .pad {
   }
 
   function objectiveText(w) {
-    if (w.s6) return IW.Story6.objectiveText(w);
     if (w.s4) return IW.Story4.objectiveText(w);
     if (w.inner) return IW.Acts.objectiveText(w);
     if (w.tale) return IW.Tale.objectiveText(w);
@@ -15304,7 +14998,6 @@ body.touch .pad {
     if (w.started) return;
     w.started = true;
     w.visited[w.mapId] = true;
-    if (w.s6) { IW.Story6.begin(w); return; }
     if (w.s4) { IW.Story4.begin(w); return; }
     if (w.inner) { IW.Acts.begin(w); return; }
     if (w.tale) { IW.Tale.begin(w); return; }
@@ -15341,8 +15034,8 @@ body.touch .pad {
 
   // ---------- 대화와 조사 ----------
   function talk(w, n) {
-    if (w.s6) { IW.Story6.talk(w,n); return; }
     const f = w.flags, p = w.player;
+    if (IW.Atlas) IW.Atlas.met(w, n); // 탐험 지도: 말을 나눈 사람의 마지막 자리
     if (w.s4) { IW.Story4.talk(w, n); return; }
     if (w.inner && IW.Acts.talk(w, n)) return;
     if (w.tale) { const dx0 = p.x - n.x, dy0 = p.y - n.y; if (!n.follow) n.dir = Math.abs(dx0) > Math.abs(dy0) ? (dx0 > 0 ? 'right' : 'left') : (dy0 > 0 ? 'down' : 'up'); IW.Tale.talk(w, n); return; }
@@ -15395,7 +15088,6 @@ body.touch .pad {
     if (!tg) return;
     if (tg.kind === 'npc') return talk(w, tg.npc);
     if (tg.kind === 'shade') return IW.Acts.listen(w, tg.e);
-    if (w.s6) { IW.Story6.spot(w,tg.id); return; }
     if (w.s4 && IW.Story4.spot(w, tg.id)) return;
     if (w.inner && IW.Acts.spot(w, tg.id)) return;
     if (w.tale) { IW.Tale.spot(w, tg.id); return; }
@@ -15457,7 +15149,6 @@ body.touch .pad {
 
   function useShield(w) {
     if (!IW.Skills.use(w)) return;
-    if (w.s6) { IW.Story6.tool(w); return; }
     const s = Combat.deviceInFront(w);
     const f = w.flags;
     if (!s || f[s.device]) return;
@@ -15591,18 +15282,12 @@ body.touch .pad {
     w.playTime += dt;
 
     // 바람 걸음: 돌진하는 동안은 입력 대신 돌진으로 움직인다
-    const dashStart=w.s6&&w.dash?{x:p.x,y:p.y,dx:w.dash.dx,dy:w.dash.dy}:null;
     IW.Skills.update(w, dt);
-    if(dashStart){
-      if(dashStart.dx)p.y=dashStart.y;else p.x=dashStart.x;
-      if(Collision.blocked(w.map,w.npcs,p.x,p.y)){p.x=dashStart.x;p.y=dashStart.y;}
-    }
     if (w.dash) {
       p.walking = false; p.frame = 2;
       Combat.update(w, dt);
       if (w.inner) IW.Acts.update(w, dt);
       if (w.s4) IW.Story4.update(w, dt);
-      if (w.s6) IW.Story6.update(w, dt);
       if (w.hp <= 0) { if (w.inner) IW.Acts.faint(w); else if (w.s4) IW.Story4.faint(w); else respawn(w); }
       return;
     }
@@ -15682,7 +15367,6 @@ body.touch .pad {
     if (w.inner) IW.Acts.update(w, dt);
     if (w.tale) IW.Tale.update(w, dt);
     if (w.s4) IW.Story4.update(w, dt);
-    if (w.s6) IW.Story6.update(w, dt);
     if (w.inner && IW.Scene) IW.Scene.tick(w);
     if (countDev() !== devBefore) afterDevice(w);
     if (w.hp <= 0) { if (w.inner) IW.Acts.faint(w); else if (w.s4) IW.Story4.faint(w); else respawn(w); return; }
@@ -16054,6 +15738,8 @@ body.touch .pad {
 
   const read = (k) => { try { const s = JSON.parse(localStorage.getItem(k) || 'null'); return s && (s.id || s.seed != null) ? s : null; } catch (_) { return null; } };
   function load() { return read(KEY2) || read(KEY1); }
+  // 이 기기에서 만든 세계 목록 (주인 기록과 방문자 기록을 나누는 데 쓴다. 신원 확인이 아니라 "이 브라우저에서 만들었다"는 표시일 뿐이다)
+  function markOwned(code) { try { const core = Q.coreOf(code), a = JSON.parse(localStorage.getItem('innerworld.owned') || '[]'); if (Array.isArray(a) && !a.includes(core)) { a.push(core); localStorage.setItem('innerworld.owned', JSON.stringify(a.slice(-60))); } } catch (_) {} }
   const write = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch (_) {} };
 
   function show(which) {
@@ -16078,7 +15764,7 @@ body.touch .pad {
     const st = Q.steps(state.seed, state.answers).map((s) => ({ kind: 'choice', ...s }));
     const all = st.length === 10 && Q.complete(state.answers);
     const regret = state.answers[7] != null ? Q.MAIN[7].o[state.answers[7]][0] : null;
-    const frees = Q.FREE.filter((f) => (GV!==6 || f.id==='thing') && (!f.when || (regret ? f.when({ regret }) : true)));
+    const frees = Q.FREE.filter((f) => !f.when || (regret ? f.when({ regret }) : true));
     for (const f of frees) {
       st.push({ kind: 'free', ...f });
       // 좋아하는 것이 사전에 없거나 작품 이름만 알아들었으면: 어떤 점이 좋은지 한 번 더 (아는 척하지 않는다)
@@ -16166,7 +15852,7 @@ body.touch .pad {
     // 공개 범위
     $('qCat').textContent = '공개 범위';
     $('qText').textContent = '친구가 이 세계를 열었을 때, 무엇을 보여 줄까요?';
-    const items = Q.SHARE_ITEMS.filter((it) => it.id === 'notes' || (GV!==6 && state.free[it.id]));
+    const items = Q.SHARE_ITEMS.filter((it) => it.id === 'notes' || state.free[it.id]);
     for (const it of items) {
       const b = document.createElement('button');
       b.type = 'button'; b.className = 'opt opt-toggle';
@@ -16219,7 +15905,7 @@ body.touch .pad {
     state.i++; render(true);
   }
 
-  const GV = 6; // 새 세계만 IW6. 저장된 IW2~IW5는 자기 판을 유지한다.
+  const GV = 3; // 새로 만드는 세계의 생성기 판
   function shareCode(seed, answers, free, share, diff, gv) {
     const t = Q.traits(answers);
     const wp = IW.Weapons.make(free.thing || '', t, null, free.feel);
@@ -16233,7 +15919,7 @@ body.touch .pad {
     const { seed, answers, free, share } = state;
     if (!Q.complete(answers)) return;
     const { code } = shareCode(seed, answers, free, share, null, GV);
-    write(KEY2, { v: 2, gv: GV, id: code, seed, answers, free, share, at: Date.now() });
+    write(KEY2, { v: 2, gv: GV, id: code, seed, answers, free, share, at: Date.now() }); markOwned(code);
     IW.Sound.play('found');
     showBlueprint({ v: 2, gv: GV, id: code, seed, answers, free, share });
   }
@@ -16253,8 +15939,8 @@ body.touch .pad {
     const t = Q.traits(saved.answers);
     const viewFree = visitor ? (saved.pub || {}) : (saved.free || {});
     // 예전에 만든 세계(gv 없음)는 예전 생성기 그대로. 새로 만든 세계는 장면 조립기(3). IW4는 따로
-    const gv = saved.gv === 6 ? 6 : saved.gv === 5 ? 5 : saved.gv === 4 ? 4 : saved.gv === 3 ? 3 : 2;
-    const d = gv === 6 ? IW.IW6.describe(IW.IW6.plan(t,saved.seed,viewFree,{weaponKey:visitor?(saved.pub||{}).w:null})) : gv >= 4 ? IW.IW4.describe(IW.IW4.plan(t, saved.seed, viewFree, { owner: !visitor, rev: gv === 5 ? 2 : 1 }), !visitor)
+    const gv = saved.gv === 5 ? 5 : saved.gv === 4 ? 4 : saved.gv === 3 ? 3 : 2;
+    const d = gv >= 4 ? IW.IW4.describe(IW.IW4.plan(t, saved.seed, viewFree, { owner: !visitor, rev: gv === 5 ? 2 : 1 }), !visitor)
       : IW.InnerPlan.describe(IW.InnerPlan.plan(t, saved.seed, viewFree, { weaponKey: visitor ? (saved.pub || {}).w : null }), !visitor);
     const code = visitor ? saved.id : shareCode(saved.seed, saved.answers, saved.free || {}, saved.share || {}, saved.diff, gv).code;
     current = { v: 2, gv, lab: !!saved.lab, share: saved.share || {}, id: code, core: Q.coreOf(code), seed: saved.seed, answers: saved.answers, free: visitor ? null : (saved.free || {}), pub: saved.pub || null, notes: visitor ? saved.notes !== false : true, visitor: !!visitor, diff: visitor ? IW.Difficulty.fromCode((saved.pub || {}).d) : (saved.diff || 'normal'), baseDiff: visitor ? IW.Difficulty.fromCode((saved.pub || {}).d) : (saved.diff || 'normal') };
@@ -16366,8 +16052,8 @@ body.touch .pad {
   }
   function openLabWorld(engine, o, seed, gv) {
     const answers = labAnswers(engine, o), sd = (seed >>> 0) || 1;
-    showBlueprint2({ v: 2, gv: gv === 6 ? 6 : gv === 4 ? 4 : 5, lab: true, seed: sd, answers, free: {}, share: {} }, false);
-    $('bpKicker').textContent = 'IW4 시제품'; $('bpAgain').textContent = '처음부터 다시 답하기';
+    showBlueprint2({ v: 2, gv: gv === 4 ? 4 : 5, lab: true, seed: sd, answers, free: {}, share: {} }, false);
+    $('bpKicker').textContent = 'IW4 시제품'; $('bpAgain').textContent = '처음부터 다시 답하기'; markOwned(current.id);
     show('bp');
   }
   function openLab() {
@@ -16383,7 +16069,7 @@ body.touch .pad {
     sel('engine', '중심 갈등 (소망 × 두려움)', [['masks', '알아봐 주길 × 미움받기 싫음 → 가면 축제 도시'], ['isles', '무사하길 × 멀어짐 → 흩어지는 섬들']]);
     for (const [k, label] of LAB_Q) sel(k, label, Q.MAIN.find((m) => m.key === k).o.map((x) => [x[0], x[1]]));
     sel('cope', '불안 더 묻기 (마지막 밤의 압박)', [['0', '더 잘하려 애씀'], ['1', '곱씹음'], ['2', '아무렇지 않은 척'], ['3', '거리를 둠']]);
-    sel('gv', '세계 버전 (같은 답·시드로 비교)', [['6','IW6: 이야기와 장소를 잇는 가면 축제'], ['5', '2판: 장소에 맞춘 배치 (IW5 코드)'], ['4', '1판: 처음 시제품 (IW4 코드)']]);
+    sel('gv', '배치 규칙 (같은 답·시드로 비교)', [['5', '2판: 장소에 맞춘 배치 (IW5 코드)'], ['4', '1판: 처음 시제품 (IW4 코드)']]);
     const sd = document.createElement('label'); sd.className = 'lab-row'; sd.innerHTML = '<span>시드 (같은 답, 다른 배치)</span><input name="seed" type="number" min="1" value="4242">'; form.appendChild(sd);
     const go = document.createElement('button'); go.type = 'submit'; go.className = 'mi'; go.textContent = '이 답으로 세계 열기'; form.appendChild(go);
     form.onsubmit = (e) => { e.preventDefault(); const fd = new FormData(form); const o = {}; for (const [k] of LAB_Q) o[k] = fd.get(k); o.cope = fd.get('cope'); openLabWorld(fd.get('engine'), o, +fd.get('seed'), +fd.get('gv')); };
@@ -16456,10 +16142,10 @@ body.touch .pad {
 
   // ---------- 설정 (이 브라우저에만 저장) ----------
   const ACCENT_UI = {
-    indigo: { l: '#2f5d8c', d: '#86aed8', logo: '#3b6fa4', art: '#4b78ad' },
-    vermilion: { l: '#b0413a', d: '#e8907f', logo: '#c4493d', art: '#c4493d' },
-    green: { l: '#3a7550', d: '#88c29d', logo: '#4b8d60', art: '#4f9466' },
-    amber: { l: '#99620f', d: '#e2b25c', logo: '#cf9532', art: '#d59a35' },
+    indigo: { l: '#1f5fd1', d: '#7fb0ff', logo: '#3b6fa4', art: '#4b78ad' },
+    vermilion: { l: '#c8372d', d: '#ff8a78', logo: '#c4493d', art: '#c4493d' },
+    green: { l: '#1e7f4f', d: '#6fd39a', logo: '#4b8d60', art: '#4f9466' },
+    amber: { l: '#a8650a', d: '#f0b84a', logo: '#cf9532', art: '#d59a35' },
   };
   const settings = { theme: 'system', accent: 'indigo', sound: true, look: 'm' };
   try { Object.assign(settings, JSON.parse(localStorage.getItem('innerworld.settings') || '{}')); } catch (_) {}
@@ -16491,13 +16177,31 @@ body.touch .pad {
   }
 
   // ---------- 저장 (이 브라우저의 localStorage. 서버 저장이 아니다) ----------
-  const keyFor = (g2) => (g2 && g2.worldId ? 'innerworld.gen.' + g2.worldId : SAVE_KEY);
+  // 주인과 방문자의 기록을 나눈다: 방문자 저장 이름에는 ~v가 붙는다. 주인 저장 이름은 예전 그대로다.
+  // (예전에는 이름이 세계 코드 하나뿐이라, 같은 기기에서 주인과 방문자로 번갈아 열면 진행이 섞였다)
+  const isV = (g2) => !!(g2 && g2.atlasRole === 'v');
+  const keyFor = (g2) => (g2 && g2.worldId ? 'innerworld.gen.' + g2.worldId + (isV(g2) ? '~v' : '') : SAVE_KEY);
+  // 이 기기가 그 세계의 주인인가 (내 설계도로 저장된 세계와 같은 세계인가)
+  function ownsWorld(core) {
+    try { const own = JSON.parse(localStorage.getItem('innerworld.owned') || '[]'); if (Array.isArray(own) && own.includes(core)) return true; } catch (_) {}
+    try { for (const k of ['innerworld.blueprint.v2', 'innerworld.blueprint.v1']) { const b = JSON.parse(localStorage.getItem(k) || 'null'); if (b && b.id && (b.id === core || IW.Inner.coreOf(b.id) === core)) return true; } } catch (_) {}
+    return false;
+  }
+  // 방문자 기록 읽기: ~v가 없으면, 이 기기가 주인이 아닐 때만 예전 이름의 기록을 이어받는다 (예전에 방문자로 하던 진행 보존)
+  function readRole(base, visitor, core) {
+    try {
+      if (!visitor) return localStorage.getItem(base);
+      const v = localStorage.getItem(base + '~v'); if (v != null) return v;
+      return ownsWorld(core) ? null : localStorage.getItem(base);
+    } catch (_) { return null; }
+  }
   function saveGame() {
     if (!game || !game.started) return;
     try { localStorage.setItem(keyFor(game), JSON.stringify(IW.Game.serialize(game))); } catch (_) {}
+    IW.Atlas.save(game); // 탐험 지도 기록은 따로 저장한다 (주인·방문자 따로)
   }
-  function loadGenSave(id) {
-    try { const s = JSON.parse(localStorage.getItem('innerworld.gen.' + id) || 'null'); return s && s.v === 1 && s.worldId === id ? s : null; } catch (_) { return null; }
+  function loadGenSave(id, visitor) {
+    try { const s = JSON.parse(readRole('innerworld.gen.' + id, visitor, String(id).split('.')[0]) || 'null'); return s && s.v === 1 && s.worldId === id ? s : null; } catch (_) { return null; }
   }
   function loadSave() {
     try { const s = JSON.parse(localStorage.getItem(SAVE_KEY) || 'null'); return s && s.v === 1 ? s : null; } catch (_) { return null; }
@@ -16538,11 +16242,11 @@ body.touch .pad {
   const reduceMotion = g.matchMedia && g.matchMedia('(prefers-reduced-motion: reduce)').matches;
   const isTouch = () => document.body.classList.contains('touch');
   const fmtTime = (s) => `${Math.floor(s / 60)}분 ${String(Math.floor(s % 60)).padStart(2, '0')}초`;
-  const overlayOpen = () => !$('pause').hidden || !$('complete').hidden;
+  const overlayOpen = () => !$('pause').hidden || !$('complete').hidden || !$('atlas').hidden;
 
   // 여백의 서고(제작자의 세계)는 하나뿐: 손으로 지은 언덕 마을. 예전 실내 서고 1장은 더 이상 만들지 않는다
   const TALE_ID = 'tale.yeobaek';
-  function newGame() { try { localStorage.removeItem('innerworld.gen.' + TALE_ID); } catch (_) {} game = official = null; enterTale(); }
+  function newGame() { try { localStorage.removeItem('innerworld.gen.' + TALE_ID); } catch (_) {} IW.Atlas.clear(TALE_ID, 'o'); game = official = null; enterTale(); }
 
   // 생성 세계로 들어가기: 설계도(시드+답) → 맵·이야기 생성 → 이 세계의 저장이 있으면 이어서
   function enterWorld(cur) {
@@ -16557,7 +16261,8 @@ body.touch .pad {
     IW.STORY.gen = IW.GenStory.make(bp, map, free);
     game = IW.Game.create(settings.accent, { mapId: 'gen', worldId: cur.id });
     game.reduceMotion = reduceMotion;
-    const sv = loadGenSave(cur.id);
+    game.atlasRole = cur.visitor ? 'v' : 'o';
+    const sv = loadGenSave(cur.id, cur.visitor);
     if (sv) IW.Game.restore(game, sv);
     afterGameSwap();
     if (location.hash !== '#play') { try { history.replaceState(null, '', location.pathname + location.search + '#play'); } catch (_) {} }
@@ -16575,12 +16280,11 @@ body.touch .pad {
   // IW4: 답이 이야기의 모양을 정하는 세계 (IW2·IW3와 따로)
   function iw4PlanOf(cur) {
     const free = cur.visitor ? (cur.pub || {}) : (cur.free || {});
-    if(cur.gv===6)return IW.IW6.plan(IW.Inner.traits(cur.answers),cur.seed,free,{weaponKey:cur.visitor?(cur.pub||{}).w:null});
     return IW.IW4.plan(IW.Inner.traits(cur.answers), cur.seed, free, { owner: !cur.visitor, weaponKey: cur.visitor ? (cur.pub || {}).w : null, rev: cur.gv === 5 ? 2 : 1 });
   }
   function enterInner(cur) {
     let built;
-    try { built = cur.gv === 6 ? IW.IW6.build(iw4PlanOf(cur),cur.seed) : cur.gv >= 4 ? IW.IW4.build(iw4PlanOf(cur), cur.seed) : IW.InnerPlan.build(innerPlanOf(cur), cur.seed); } catch (err) { console.error(err); toast('세계를 만들지 못했어요. 다시 시도해 주세요.'); return; }
+    try { built = cur.gv >= 4 ? IW.IW4.build(iw4PlanOf(cur), cur.seed) : IW.InnerPlan.build(innerPlanOf(cur), cur.seed); } catch (err) { console.error(err); toast('세계를 만들지 못했어요. 다시 시도해 주세요.'); return; }
     IW.MAPS.gen = built.map;
     IW.STORY.gen = built.story;
     const core = IW.Inner.coreOf(cur.id), diff = IW.Difficulty.LEVELS[cur.diff] ? cur.diff : 'normal';
@@ -16588,23 +16292,26 @@ body.touch .pad {
     game = IW.Game.create(settings.accent, { mapId: 'gen', worldId: diff === 'normal' ? core : core + '.' + diff });
     game.diff = diff;
     game.reduceMotion = reduceMotion;
-    game.cur = cur;
-    const sv = loadGenSave(core);
+    game.cur = cur; game.atlasRole = cur.visitor ? 'v' : 'o';
+    const sv = loadGenSave(core, cur.visitor);
     if (sv) IW.Game.restore(game, sv);
     afterGameSwap();
     if (location.hash !== '#play') { try { history.replaceState(null, '', location.pathname + location.search + '#play'); } catch (_) {} }
     show('play');
   }
   const endingsKey = (core) => 'innerworld.endings.' + core;
+  const curV = () => !!(game && isV(game));
   // 난이도별 최고 기록 — 이 브라우저에만. 난이도가 다른 기록끼리 섞지 않는다
   const bestKey = () => 'innerworld.best.' + game.worldId.split('.')[0] + '.' + (game.diff || 'normal');
-  function saveBest() { const t = game.finishedAt || game.playTime; try { const b = +localStorage.getItem(bestKey()) || 0; if (!b || t < b) localStorage.setItem(bestKey(), String(Math.round(t))); } catch (_) {} }
-  function loadBest() { try { return +localStorage.getItem(bestKey()) || 0; } catch (_) { return 0; } }
-  function seenEndings(core) { try { const a = JSON.parse(localStorage.getItem(endingsKey(core)) || '[]'); return Array.isArray(a) ? a : []; } catch (_) { return []; } }
-  function addEnding(core, id) { const a = seenEndings(core); if (!a.includes(id)) a.push(id); try { localStorage.setItem(endingsKey(core), JSON.stringify(a)); } catch (_) {} }
+  const bestCore = () => game.worldId.split('.')[0];
+  function saveBest() { const t = game.finishedAt || game.playTime; try { const b = loadBest(); if (!b || t < b) localStorage.setItem(bestKey() + (curV() ? '~v' : ''), String(Math.round(t))); } catch (_) {} }
+  function loadBest() { return +readRole(bestKey(), curV(), bestCore()) || 0; }
+  function seenEndings(core, visitor) { const v = visitor == null ? curV() : !!visitor; try { const a = JSON.parse(readRole(endingsKey(core), v, core) || '[]'); return Array.isArray(a) ? a : []; } catch (_) { return []; } }
+  function addEnding(core, id) { const a = seenEndings(core); if (!a.includes(id)) a.push(id); try { localStorage.setItem(endingsKey(core) + (curV() ? '~v' : ''), JSON.stringify(a)); } catch (_) {} }
   function replayInner() {
     if (!game || !game.cur) return;
-    try { localStorage.removeItem('innerworld.gen.' + game.worldId); } catch (_) {}
+    try { localStorage.removeItem(keyFor(game)); } catch (_) {}
+    IW.Atlas.clear(game.worldId, isV(game) ? 'v' : 'o'); // 처음부터: 내 탐험 지도도 새 종이로
     const cur = game.cur;
     game = null;
     enterInner(cur);
@@ -16629,7 +16336,7 @@ body.touch .pad {
     const cv = $('logo');
     if (!cv) return;
     const a = ACCENT_UI[settings.accent];
-    const { w, h } = IW.Logo.draw(cv, { ink: '#1d1822', paper: '#f2ead6', light: '#fffaf0', shadow: a.logo });
+    const { w, h } = IW.Logo.draw(cv, { ink: '#000000', paper: '#ffffff', light: '#ffffff', shadow: a.logo });
     const avail = Math.min(innerWidth - 32, 620);
     const s = Math.max(3, Math.min(9, Math.floor(avail / w)));
     cv.style.width = w * s + 'px'; cv.style.height = h * s + 'px';
@@ -16712,6 +16419,28 @@ body.touch .pad {
     $('pause').hidden = false; input.clear();
     saveGame();
     $('btnResume').focus({ preventScroll: true });
+  }
+  // ---------- 탐험 지도 ----------
+  let atlasView = null;
+  function drawAtlas() {
+    const box = $('atlas').querySelector('.atlas-paper'), cv = $('atlasCv');
+    atlasView = IW.Atlas.draw(cv, game, { maxW: Math.max(240, Math.min(innerWidth - 56, 760)), maxH: Math.max(180, Math.min(innerHeight - 250, 520)) });
+    box.style.width = cv.width + 'px';
+    const st = IW.Atlas.stats(game), a = IW.Atlas.state(game);
+    $('atlasNote').textContent = `걸은 칸 ${st.walked} · 만난 사람 ${Object.keys(a.met).length} · 표시 ${a.pins.length}/${IW.Atlas.PINS} (본 곳을 누르면 표시를 꽂거나 뽑아요)`;
+  }
+  function openAtlas() {
+    if (view !== 'play' || !game || overlayOpen() || game.dialog || game.trans) return;
+    $('atlas').hidden = false; input.clear(); drawAtlas();
+    $('atlasClose').focus({ preventScroll: true });
+  }
+  function closeAtlas() { $('atlas').hidden = true; input.clear(); saveGame(); $('stage').focus({ preventScroll: true }); }
+  function atlasTap(e) {
+    if (!atlasView) return;
+    const cv = $('atlasCv'), r = cv.getBoundingClientRect();
+    const tx = Math.floor((e.clientX - r.left) / r.width * atlasView.cols) + atlasView.x0, ty = Math.floor((e.clientY - r.top) / r.height * atlasView.rows) + atlasView.y0;
+    if (tx < 0 || ty < 0 || tx >= game.map.w || ty >= game.map.h) return;
+    if (IW.Atlas.togglePin(game, tx, ty)) { IW.Sound.play('ui'); drawAtlas(); }
   }
   function closePause() { $('pause').hidden = true; input.clear(); $('stage').focus({ preventScroll: true }); }
 
@@ -16914,7 +16643,6 @@ body.touch .pad {
 
   const COMPLETE_DEFAULT = { kicker: '제작자의 세계', title: '현관과 광장을 복원했다', quote: ['언젠가 이룰 꿈은, 아직 펼치지 않은 다음 장이다.', '고요한 자리에도 누군가의 목소리가 머문다.', '그리고 이야기는 아직 계속된다.'], fine: '온기의 방은 아직 준비 중이에요. 리오가 원고를 들고 기다립니다.', stay: '광장 더 둘러보기' };
   function showComplete() {
-    if(game.s6)return showCompleteIW6();
     if (game.s4) return showCompleteIW4();
     if (game.inner) return showCompleteInner();
     if (game.tale) return showCompleteTale();
@@ -16970,24 +16698,9 @@ body.touch .pad {
     $('complete').hidden = false;
     $('btnStay').focus({ preventScroll: true });
   }
-  function replayTale() { try { localStorage.removeItem('innerworld.gen.' + TALE_ID); } catch (_) {} game = official = null; enterTale(); }
+  function replayTale() { try { localStorage.removeItem('innerworld.gen.' + TALE_ID); } catch (_) {} IW.Atlas.clear(TALE_ID, 'o'); game = official = null; enterTale(); }
 
   // IW4 결말 화면: 이 세계에서 일어난 일(진단이 아니라 사건), 결말 세 갈래, 주인의 결말 비교(주인이 허락했을 때만)
-  function showCompleteIW6(){
-    const sp=game.map.iw6.spec,e=sp.endings[game.flags.ending],seen=seenEndings(game.worldId.split('.')[0]),cur=game.cur||{};
-    document.querySelector('#complete .win-kicker').textContent=sp.name;
-    $('cTitle').textContent=e.title;document.querySelector('#complete .quote').textContent=e.line;
-    $('cTime').textContent=fmtTime(game.finishedAt||game.playTime);$('cFound').textContent=game.found.gen.size+' / '+game.story.discoverTotal;
-    $('cParryLabel').textContent='본 결말';$('cParry').textContent=seen.length+' / 3';$('cNote').previousElementSibling.textContent='사용한 도구';$('cNote').textContent=sp.weapon.name;
-    $('cEnds').replaceChildren();for(const[id,end]of Object.entries(sp.endings)){const li=document.createElement('li');li.textContent=seen.includes(id)?end.title:'아직 모르는 결말';$('cEnds').append(li);}
-    $('cSaidWrap').hidden=true;$('cNotesWrap').hidden=false;document.querySelector('#cNotesWrap .c-sub').textContent='이 세계에서 있었던 일';document.querySelector('#cNotesWrap .fine').textContent='정답으로 정해진 해석은 없어요. 어떤 장면이 마음에 남았나요?';
-    $('cNotes').replaceChildren();for(const text of [sp.weapon.name+'을 들고 서로 다른 기록을 확인했다.',game.flags.iw6.flags.includes('promise')?'오래된 약속을 찾아 이음과 서온을 다시 이었다.':'오래된 기록실에는 아직 읽지 않은 이야기가 남아 있다.']){const li=document.createElement('li');li.textContent=text;$('cNotes').append(li);}
-    $('cCompare').hidden=true;$('cOwnEnd').hidden=!!cur.visitor;
-    if(cur.visitor&&cur.pub&&sp.endings[cur.pub.e]){$('cCompare').hidden=false;$('cCompare').textContent='세계 주인은 '+sp.endings[cur.pub.e].title+'에 닿았어요. 나는 '+e.title+'.';}
-    if(!cur.visitor){const box=$('cOwnEndBox');box.checked=!!(cur.share&&cur.share.e===game.flags.ending);box.onchange=()=>IW.Quiz.setShareEnding(box.checked?game.flags.ending:null);}
-    document.querySelector('#complete > .win > .fine').textContent='친구는 어떤 기록을 믿었을까요? 같은 세계에서 다른 선택을 해 보세요.';
-    $('btnStay').textContent='이 세계 더 둘러보기';$('cInner').hidden=false;$('btnReplay').hidden=false;$('complete').hidden=false;$('btnStay').focus({preventScroll:true});updateTitleButtons();
-  }
   function showCompleteIW4() {
     const f = game.flags, X = game.map.iw4, sp = X.spec, E = IW.IW4.ENGINES[sp.engine], e = sp.endings[f.ending];
     const core = game.worldId.split('.')[0], seen = seenEndings(core), cur = game.cur || {};
@@ -17077,7 +16790,27 @@ body.touch .pad {
     if (map.landmarkAt) IW.Scene.drawLandmark(c, map, !!on, 0);
     return st;
   }
-  // ---------- 공유 카드 (그림 한 장: 실제 지도 + 이름 + ID + 기록) ----------
+  // 공유 카드 그림: 지도 전체가 아니라 "처음 도착했을 때 보이는 풍경". 도착 자리에서 보이지 않는 곳(벽 뒤·숨은 곳·먼 곳)은 가린다
+  function arrivalPicture(map, st) {
+    const seen = IW.Atlas.arrival(map, 10);
+    // 보이는 범위를 감싸는 상자를 3:2로 맞춘다 (가려진 곳이 그림을 다 차지하지 않게)
+    let bx0 = map.w, by0 = map.h, bx1 = 0, by1 = 0;
+    for (let i = 0; i < seen.length; i++) if (seen[i] & 31) { const x = i % map.w, y = (i / map.w) | 0; if (x < bx0) bx0 = x; if (x > bx1) bx1 = x; if (y < by0) by0 = y; if (y > by1) by1 = y; }
+    let VW = bx1 - bx0 + 3, VH = by1 - by0 + 3;
+    if (VW < VH * 1.5) VW = Math.ceil(VH * 1.5); else VH = Math.ceil(VW / 1.5);
+    VW = Math.min(map.w, VW); VH = Math.min(map.h, VH);
+    const x0 = Math.max(0, Math.min(map.w - VW, Math.round((bx0 + bx1 + 1 - VW) / 2))), y0 = Math.max(0, Math.min(map.h - VH, Math.round((by0 + by1 + 1 - VH) / 2)));
+    const cv = IW.Art.canvas(VW * 16, VH * 16), c = cv.getContext('2d');
+    c.drawImage(st, x0 * 16, y0 * 16, VW * 16, VH * 16, 0, 0, VW * 16, VH * 16);
+    const at = (x, y) => (x < 0 || y < 0 || x >= map.w || y >= map.h ? 0 : seen[y * map.w + x] & 31);
+    for (let y = 0; y < VH; y++) for (let x = 0; x < VW; x++) {
+      const mx = x + x0, my = y + y0; if (at(mx, my)) continue;
+      const near = at(mx + 1, my) || at(mx - 1, my) || at(mx, my + 1) || at(mx, my - 1), near2 = near || at(mx + 1, my + 1) || at(mx - 1, my - 1) || at(mx + 1, my - 1) || at(mx - 1, my + 1) || at(mx + 2, my) || at(mx - 2, my) || at(mx, my + 2) || at(mx, my - 2);
+      c.fillStyle = near ? 'rgba(0,0,0,.72)' : near2 ? 'rgba(0,0,0,.9)' : '#000000'; c.fillRect(x * 16, y * 16, 16, 16);
+    }
+    return cv;
+  }
+  // ---------- 공유 카드 (그림 한 장: 도착 풍경 + 이름 + ID + 기록) ----------
   function makeShareCard(cur) {
     if (cur.v === 2 && cur.gv >= 4) return makeShareCardIW4(cur);
     if (cur.v === 2) return makeShareCardInner(cur);
@@ -17086,93 +16819,94 @@ body.touch .pad {
     const map = IW.WorldGen.generate(bp);
     const W = 1080, H = 1350;
     const cv = IW.Art.canvas(W, H), c = cv.getContext('2d');
-    const sv = loadGenSave(cur.id);
-    c.fillStyle = '#17151e'; c.fillRect(0, 0, W, H);
+    const sv = loadGenSave(cur.id, cur.visitor);
+    c.fillStyle = '#ffffff'; c.fillRect(0, 0, W, H);
     // 지도
-    const st = IW.Outdoor.buildStatic(map, {});
+    let st = IW.Outdoor.buildStatic(map, {});
     const mc = st.getContext('2d');
-    IW.Outdoor.drawLandmark(mc, map.landmarkAt.x * 16, map.landmarkAt.y * 16, map.landscape, !!(sv && sv.flags.landmarkOn), 0);
+    IW.Outdoor.drawLandmark(mc, map.landmarkAt.x * 16, map.landmarkAt.y * 16, map.landscape, false, 0);
+    const full = st; st = arrivalPicture(map, full);
     const scale = Math.min((W - 120) / st.width, 760 / st.height);
     const mw = Math.round(st.width * scale), mh = Math.round(st.height * scale), mx = (W - mw) / 2, my = 210;
     c.imageSmoothingEnabled = false;
-    c.fillStyle = '#050407'; c.fillRect(mx - 10, my - 10, mw + 20, mh + 20);
+    c.fillStyle = '#000000'; c.fillRect(mx - 10, my - 10, mw + 20, mh + 20);
     c.drawImage(st, mx, my, mw, mh);
     const tint = IW.Outdoor.TIME_TINT[bp.axes.time]; if (tint) { c.fillStyle = tint; c.fillRect(mx, my, mw, mh); }
     // 로고
-    const lg = IW.Art.canvas(10, 10); const L = IW.Logo.draw(lg, { ink: '#1d1822', paper: '#f2ead6', light: '#fffaf0', shadow: ACCENT_UI[settings.accent].logo });
+    const lg = IW.Art.canvas(10, 10); const L = IW.Logo.draw(lg, { ink: '#000000', paper: '#ffffff', light: '#ffffff', shadow: ACCENT_UI[settings.accent].logo });
     c.drawImage(lg, (W - L.w * 7) / 2, 60, L.w * 7, L.h * 7);
     // 글
-    c.fillStyle = '#f2ead6'; c.textAlign = 'center';
-    c.font = "700 54px 'Gowun Batang', 'Noto Serif KR', serif";
+    c.fillStyle = '#111111'; c.textAlign = 'center';
+    c.font = "44px Galmuri11, 'Pretendard', sans-serif";
     c.fillText(d.name, W / 2, my + mh + 100, W - 100);
-    c.font = "32px 'Gowun Dodum', 'Noto Sans KR', sans-serif"; c.fillStyle = '#c9c0d6';
+    c.font = "32px 'Pretendard', 'Apple SD Gothic Neo', sans-serif"; c.fillStyle = '#4a4d52';
     const a = bp.axes, LB = IW.Blueprint.LABEL;
     c.fillText(`${LB.companion[a.companion]} · ${LB.ending[a.ending]}`, W / 2, my + mh + 152, W - 100);
     if (sv && sv.finishedAt) { c.fillText(`완료 ${fmtTime(sv.finishedAt)} · ` + (sv.skill && sv.skill !== 'guard' ? `흩어 놓은 먼지 ${sv.stats.defeats || 0}마리` : `튕겨 낸 횟수 ${sv.stats.parries}번`), W / 2, my + mh + 200, W - 100); }
-    c.font = "40px ui-monospace, Menlo, monospace"; c.fillStyle = '#f3d36b';
+    c.font = "40px ui-monospace, Menlo, monospace"; c.fillStyle = ACCENT_UI[settings.accent].l;
     c.fillText(cur.id, W / 2, H - 90);
-    c.font = "26px 'Gowun Dodum', sans-serif"; c.fillStyle = '#8f879c';
+    c.font = "26px 'Pretendard', sans-serif"; c.fillStyle = '#7a7d83';
     c.fillText('당신의 선택이 하나의 세계가 된다.', W / 2, H - 40);
     return cv.toDataURL('image/png');
   }
   function makeShareCardIW4(cur) {
-    const sp = iw4PlanOf(cur), { map } = cur.gv===6?IW.IW6.build(sp,cur.seed):IW.IW4.build(sp, cur.seed);
-    const core = IW.Inner.coreOf(cur.id), sv = loadGenSave(core), seen = seenEndings(core);
+    const sp = iw4PlanOf(cur), { map } = IW.IW4.build(sp, cur.seed);
+    const core = IW.Inner.coreOf(cur.id), sv = loadGenSave(core, cur.visitor), seen = seenEndings(core, cur.visitor);
     const W = 1080, H = 1350, cv = IW.Art.canvas(W, H), c = cv.getContext('2d');
-    c.fillStyle = '#17151e'; c.fillRect(0, 0, W, H);
-    const st = mapPicture(map, !!(sv && sv.flags && sv.flags.landmarkOn));
+    c.fillStyle = '#ffffff'; c.fillRect(0, 0, W, H);
+    const st = arrivalPicture(map, mapPicture(map, false));
     const scale = Math.min((W - 120) / st.width, 720 / st.height);
     const mw = Math.round(st.width * scale), mh = Math.round(st.height * scale), mx = (W - mw) / 2, my = 190;
-    c.imageSmoothingEnabled = false; c.fillStyle = '#050407'; c.fillRect(mx - 10, my - 10, mw + 20, mh + 20); c.drawImage(st, mx, my, mw, mh);
-    const lg = IW.Art.canvas(10, 10); const L = IW.Logo.draw(lg, { ink: '#1d1822', paper: '#f2ead6', light: '#fffaf0', shadow: ACCENT_UI[settings.accent].logo });
+    c.imageSmoothingEnabled = false; c.fillStyle = '#000000'; c.fillRect(mx - 10, my - 10, mw + 20, mh + 20); c.drawImage(st, mx, my, mw, mh);
+    const lg = IW.Art.canvas(10, 10); const L = IW.Logo.draw(lg, { ink: '#000000', paper: '#ffffff', light: '#ffffff', shadow: ACCENT_UI[settings.accent].logo });
     c.drawImage(lg, (W - L.w * 7) / 2, 50, L.w * 7, L.h * 7);
-    c.textAlign = 'center'; c.fillStyle = '#f2ead6'; c.font = "700 54px 'Gowun Batang', 'Noto Serif KR', serif";
+    c.textAlign = 'center'; c.fillStyle = '#111111'; c.font = "44px Galmuri11, 'Pretendard', sans-serif";
     c.fillText(sp.name, W / 2, my + mh + 86, W - 100);
-    c.fillStyle = '#c9c0d6'; c.font = "31px 'Gowun Dodum', 'Noto Sans KR', sans-serif";
+    c.fillStyle = '#4a4d52'; c.font = "31px 'Pretendard', 'Apple SD Gothic Neo', sans-serif";
     // 한 문장을 두 줄로
     const words = sp.sentence.split(' '); let line = '', y = my + mh + 140; const lines = [];
     for (const wd of words) { const t2 = line ? line + ' ' + wd : wd; if (c.measureText(t2).width > W - 160) { lines.push(line); line = wd; } else line = t2; } if (line) lines.push(line);
     for (const l of lines.slice(0, 3)) { c.fillText(l, W / 2, y, W - 120); y += 44; }
     if (sv && sv.flags && sv.flags.ending && cur.share && cur.share.e) c.fillText(`내가 고른 결말: ${sp.endings[sv.flags.ending].title} (${seen.length}/3)`, W / 2, y + 20, W - 100);
     else c.fillText('결말은 세 갈래. 어디에 닿을지는 걷는 사람의 선택.', W / 2, y + 20, W - 100);
-    c.font = "30px ui-monospace, Menlo, monospace"; c.fillStyle = '#f3d36b'; c.fillText(core, W / 2, H - 92);
-    c.font = "26px 'Gowun Dodum', sans-serif"; c.fillStyle = '#8f879c'; c.fillText('당신의 선택이 하나의 세계가 된다.', W / 2, H - 40);
+    c.font = "30px ui-monospace, Menlo, monospace"; c.fillStyle = ACCENT_UI[settings.accent].l; c.fillText(core, W / 2, H - 92);
+    c.font = "26px 'Pretendard', sans-serif"; c.fillStyle = '#7a7d83'; c.fillText('당신의 선택이 하나의 세계가 된다.', W / 2, H - 40);
     return cv.toDataURL('image/png');
   }
   function makeShareCardInner(cur) {
     const p = innerPlanOf(cur);
     const { map } = IW.InnerPlan.build(p, cur.seed);
     const core = IW.Inner.coreOf(cur.id);
-    const sv = loadGenSave(core), seen = seenEndings(core);
+    const sv = loadGenSave(core, cur.visitor), seen = seenEndings(core, cur.visitor);
     const W = 1080, H = 1350;
     const cv = IW.Art.canvas(W, H), c = cv.getContext('2d');
-    c.fillStyle = '#17151e'; c.fillRect(0, 0, W, H);
-    const st = mapPicture(map, !!(sv && sv.flags.landmarkOn));
+    c.fillStyle = '#ffffff'; c.fillRect(0, 0, W, H);
+    const st = arrivalPicture(map, mapPicture(map, false));
     const mc = st.getContext('2d');
     const scale = Math.min((W - 120) / st.width, 700 / st.height);
     const mw = Math.round(st.width * scale), mh = Math.round(st.height * scale), mx = (W - mw) / 2, my = 200;
     c.imageSmoothingEnabled = false;
-    c.fillStyle = '#050407'; c.fillRect(mx - 10, my - 10, mw + 20, mh + 20);
+    c.fillStyle = '#000000'; c.fillRect(mx - 10, my - 10, mw + 20, mh + 20);
     c.drawImage(st, mx, my, mw, mh);
     const tint = IW.Outdoor.TIME_TINT[p.axes.time]; if (tint) { c.fillStyle = tint; c.fillRect(mx, my, mw, mh); }
-    const lg = IW.Art.canvas(10, 10); const L = IW.Logo.draw(lg, { ink: '#1d1822', paper: '#f2ead6', light: '#fffaf0', shadow: ACCENT_UI[settings.accent].logo });
+    const lg = IW.Art.canvas(10, 10); const L = IW.Logo.draw(lg, { ink: '#000000', paper: '#ffffff', light: '#ffffff', shadow: ACCENT_UI[settings.accent].logo });
     c.drawImage(lg, (W - L.w * 7) / 2, 56, L.w * 7, L.h * 7);
     c.textAlign = 'center';
-    c.fillStyle = '#f2ead6'; c.font = "700 54px 'Gowun Batang', 'Noto Serif KR', serif";
+    c.fillStyle = '#111111'; c.font = "44px Galmuri11, 'Pretendard', sans-serif";
     c.fillText(p.name, W / 2, my + mh + 90, W - 100);
     // 무기
     const ic = IW.Acts.icon(p.weapon.shape, p.weapon.color);
     const iy = my + mh + 130;
     c.drawImage(ic, W / 2 - 300, iy, 60, 60);
-    c.textAlign = 'left'; c.font = "34px 'Gowun Dodum', 'Noto Sans KR', sans-serif"; c.fillStyle = '#e6dcc4';
+    c.textAlign = 'left'; c.font = "34px 'Pretendard', 'Apple SD Gothic Neo', sans-serif"; c.fillStyle = '#222222';
     c.fillText(`${p.weapon.name} · ${IW.Weapons.VERB[p.weapon.verb].label}`, W / 2 - 220, iy + 42, 560);
-    c.textAlign = 'center'; c.fillStyle = '#c9c0d6'; c.font = "32px 'Gowun Dodum', 'Noto Sans KR', sans-serif";
+    c.textAlign = 'center'; c.fillStyle = '#4a4d52'; c.font = "32px 'Pretendard', 'Apple SD Gothic Neo', sans-serif";
     c.fillText(`${p.keeper.name} — ${p.act1.label} · ${p.act2.shade}`, W / 2, iy + 120, W - 100);
     if (sv && sv.flags && sv.flags.ending) c.fillText(`내가 닿은 결말: ${p.endings[sv.flags.ending].title} (${seen.length}/3)`, W / 2, iy + 170, W - 100);
     else c.fillText('결말은 세 갈래. 어디에 닿을지는 걷는 사람의 선택.', W / 2, iy + 170, W - 100);
-    c.font = "30px ui-monospace, Menlo, monospace"; c.fillStyle = '#f3d36b';
+    c.font = "30px ui-monospace, Menlo, monospace"; c.fillStyle = ACCENT_UI[settings.accent].l;
     c.fillText(core, W / 2, H - 92);
-    c.font = "26px 'Gowun Dodum', sans-serif"; c.fillStyle = '#8f879c';
+    c.font = "26px 'Pretendard', sans-serif"; c.fillStyle = '#7a7d83';
     c.fillText('당신의 선택이 하나의 세계가 된다.', W / 2, H - 40);
     return cv.toDataURL('image/png');
   }
@@ -17208,7 +16942,7 @@ body.touch .pad {
     const cv = $('game');
     const f = fit(cv, tilesX(), 9);
     const inp = input.read();
-    if (!overlayOpen()) IW.Game.update(game, dt, inp);
+    if (!overlayOpen()) { IW.Game.update(game, dt, inp); IW.Atlas.step(game); }
     else game.t += dt;
     if (inp.moving && !hintHideAt) hintHideAt = performance.now() + 5000;
     if (hintHideAt && performance.now() > hintHideAt) $('keyhint').classList.add('gone');
@@ -17261,6 +16995,9 @@ body.touch .pad {
     $('btnSettings').addEventListener('click', () => showMenu('settings'));
     $('btnBack').addEventListener('click', () => { showMenu('main'); $('btnSettings').focus(); });
     $('btnMenu').addEventListener('click', openPause);
+    $('btnAtlas').addEventListener('click', openAtlas);
+    $('atlasClose').addEventListener('click', closeAtlas);
+    $('atlasCv').addEventListener('click', atlasTap);
     $('btnResume').addEventListener('click', closePause);
     $('btnSound').addEventListener('click', () => { settings.sound = !settings.sound; saveSettings(); applySettings(); });
     $('btnHome').addEventListener('click', goHome);
@@ -17278,11 +17015,12 @@ body.touch .pad {
         if (IW.Quiz.keys(e)) return;
       }
       if (e.code === 'Escape') {
-        if (view === 'play') { if (!$('pause').hidden) closePause(); else if ($('complete').hidden) openPause(); }
+        if (view === 'play') { if (!$('atlas').hidden) closeAtlas(); else if (!$('pause').hidden) closePause(); else if ($('complete').hidden) openPause(); }
         else if (!$('menuSettings').hidden) { showMenu('main'); $('btnSettings').focus(); }
         else if (!$('menuId').hidden) { $('menuId').hidden = true; $('menuMain').hidden = false; $('btnOpenId').focus(); }
         return;
       }
+      if (e.code === 'KeyM' && view === 'play' && game && !e.repeat) { if (!$('atlas').hidden) closeAtlas(); else openAtlas(); return; }
       if (view === 'play' && game && game.choice && !overlayOpen()) {
         const n = { Digit1: 0, Digit2: 1, Digit3: 2, Numpad1: 0, Numpad2: 1, Numpad3: 2 }[e.code];
         if (n != null) { e.preventDefault(); IW.Game.choose(game, n); IW.Sound.play('ui'); return; }
